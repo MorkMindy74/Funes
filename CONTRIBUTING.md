@@ -1,6 +1,6 @@
-# Contributing to supermemory
+# Contributing to Funes
 
-Thank you for your interest in contributing to supermemory! We welcome contributions from developers of all skill levels. This guide will help you get started with contributing to our AI-powered memory layer API.
+Thank you for your interest in contributing to Funes! We welcome contributions from developers of all skill levels. This guide will help you get started with contributing to the production-grade AI memory engine.
 
 ## 🚀 Quick Start
 
@@ -16,8 +16,8 @@ Before you begin, ensure you have the following installed:
 1. **Fork and Clone the Repository**
 
    ```bash
-   git clone https://github.com/supermemoryai/supermemory.git
-   cd supermemory
+   git clone https://github.com/MorkMindy74/Funes.git
+   cd Funes
    ```
 
 2. **Install Dependencies**
@@ -29,278 +29,85 @@ Before you begin, ensure you have the following installed:
 3. **Set Up Environment Variables**
 
    ```bash
-   # Copy the example environment file
-   cp .env.example .env.local
-
-   # Edit the file with your configuration
-   # You'll need to add your API keys and database URLs
+   cp apps/web/.env.example apps/web/.env
    ```
 
-4. **Change proxy for local development**
+   Edit `.env` with your configuration.
 
-   Add this in your `proxy.ts`(apps/web) before retrieving the cookie (`getSessionCookie(request)`):
-
-   ```ts
-   if (url.hostname === "localhost") {
-     return NextResponse.next();
-   }
-
-5. **Start the Development Server**
+4. **Start Development Servers**
 
    ```bash
    bun run dev
    ```
 
-   This will start all applications in the monorepo. The web app will be available at `http://localhost:3000`.
+## 📝 Making Changes
 
-## 📁 Project Structure
+### Branch Naming Convention
 
-supermemory is organized as a monorepo using Turbo:
+- `feat/` - New features
+- `fix/` - Bug fixes
+- `refactor/` - Code refactoring
+- `docs/` - Documentation updates
+- `chore/` - Maintenance tasks
+
+### Commit Message Format
+
+We use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
-supermemory/
-├── apps/
-│   ├── web/                 # Next.js web application
-│   ├── browser-extension/  # Browser extension (WXT-based)
-│   ├── docs/               # Documentation site
-│   └── raycast-extension/  # Raycast extension
-├── packages/
-│   ├── ui/                  # Shared UI components
-│   ├── lib/                 # Shared utilities and logic
-│   ├── hooks/               # Shared React hooks
-│   ├── validation/          # Zod schemas and validation
-│   ├── ai-sdk/              # AI SDK for memory operations
-│   ├── tools/               # Development tools and utilities
-│   ├── openai-sdk-python/   # Python SDK for OpenAI integration
-│   ├── openai-sdk-ts/       # TypeScript SDK for OpenAI integration
-│   ├── eslint-config/       # ESLint configurations
-│   └── typescript-config/   # TypeScript configurations
-├── turbo.json              # Turbo configuration
-├── biome.json              # Biome configuration
-└── package.json            # Root package configuration
+feat: add streaming profile endpoint
+fix: resolve CSRF token validation edge case
+refactor: use MarkItDown as primary content extractor
+docs: update architecture documentation
 ```
 
-## 🛠️ Development Workflow
+### Pull Request Guidelines
 
-### Available Scripts
+1. Keep PRs focused on a single concern
+2. Write tests for new functionality
+3. Ensure all existing tests pass: `bun test`
+4. Run type checking: `bun run check-types`
+5. Format and lint: `bun run format-lint`
 
-- `bun run dev` - Start development servers for all apps
-- `bun run build` - Build all applications
-- `bun run format-lint` - Format and lint code using Biome
-- `bun run check-types` - Type check all packages
+## 🛡️ Security Contributions
 
-### Code Quality
+If your PR touches:
+- Memory engine or extraction pipeline
+- Sanitization or prompt injection prevention
+- Authentication or authorization
+- Any connector or webhook
 
-We use several tools to maintain code quality:
+Please include tests and describe the security impact in the PR description.
 
-- **Biome** for linting and formatting
-- **TypeScript** for type safety
-- **Turbo** for build optimization
+## 🐛 Bug Reports
 
-Before submitting a PR, ensure your code passes all checks:
+Open an issue at [github.com/MorkMindy74/Funes/issues](https://github.com/MorkMindy74/Funes/issues) with:
 
-```bash
-bun run format-lint
-bun run check-types
-bun run build
-```
+1. A clear description of the bug
+2. Steps to reproduce
+3. Expected vs. actual behavior
+4. Environment details (OS, Bun version, etc.)
 
-### Tech Stack
+## 💡 Feature Requests
 
-- **Frontend**: Next.js 15, React 19, TypeScript
-- **Styling**: Tailwind CSS, Radix UI components
-- **State Management**: Zustand, TanStack Query
-- **Build Tool**: Turbo (monorepo)
-- **Package Manager**: Bun
-- **Deployment**: Cloudflare (OpenNext.js)
+Open a GitHub Discussion or issue with:
 
-## 🎯 How to Contribute
+1. The problem you're trying to solve
+2. Your proposed solution
+3. Alternatives you've considered
 
-### Types of Contributions
+## 🧑‍💻 Code Standards
 
-We welcome various types of contributions:
+- **TypeScript**: Strict mode, no `any`
+- **Linting**: Biome (`bun run format-lint`)
+- **Testing**: Bun test runner (`bun test`)
+- **Error handling**: Use `ApiResult` discriminated unions from the DAL
+- **Security**: All user content must be sanitized via `sanitizeForLLM()` before LLM use
 
-- 🐛 **Bug fixes**
-- ✨ **New features**
-- 🎨 **UI/UX enhancements**
-- ⚡ **Performance optimizations**
+## 📧 Questions?
 
-### Finding Issues to Work On
-
-1. Check our [Issues](https://github.com/supermemoryai/supermemory/issues) page
-2. Look for issues labeled `good first issue` for beginners
-3. Issues labeled `help wanted` are great for contributors
-4. Feel free to propose new features by opening an issue first
-
-### Making Changes
-
-1. **Create a Branch**
-
-   ```bash
-   git checkout -b feature/your-feature-name
-   # or
-   git checkout -b fix/your-bug-fix
-   ```
-
-2. **Make Your Changes**
-   - Follow our coding standards (see below)
-   - Write clear, concise commit messages
-   - Add tests if applicable
-   - Update documentation if needed
-
-3. **Test Your Changes**
-   ```bash
-   bun run dev          # Test locally
-   bun run build        # Ensure it builds
-   bun run format-lint  # Check formatting
-   bun run check-types  # Check types
-   ```
-
-## 📝 Coding Standards
-
-### General Guidelines
-
-- Use **TypeScript** for all new code
-- Follow the existing code style and patterns
-- Write self-documenting code with clear variable names
-- Add JSDoc comments for complex functions
-- Keep functions small and focused
-
-### Component Guidelines
-
-- Use functional components with hooks
-- Prefer composition over inheritance
-- Extract reusable logic into custom hooks
-- Use proper TypeScript types for props
-
-### File Naming
-
-- Use `kebab-case` for file names
-- Use `PascalCase` for component files
-- Use `camelCase` for utility functions
-
-### Import Organization
-
-```typescript
-// 1. React and Next.js imports
-import React from 'react';
-import { NextPage } from 'next';
-
-// 2. Third-party libraries
-import { clsx } from 'clsx';
-import { motion } from 'motion';
-
-// 3. Internal packages
-import { Button } from '@repo/ui';
-import { useAuth } from '@repo/lib';
-
-// 4. Relative imports
-import { Header } from './header';
-import { Footer } from './footer';
-```
-
-## 🔄 Pull Request Process
-
-### Before Submitting
-
-1. Ensure your branch is up to date with `main`
-2. Run all quality checks
-3. Test your changes thoroughly
-4. Update documentation if needed
-
-### PR Guidelines
-
-1. **Title**: Use a clear, descriptive title
-   - ✅ `feat: add semantic search to memory graph`
-   - ✅ `fix: resolve authentication redirect loop`
-   - ❌ `update stuff`
-
-2. **Description**: Include:
-   - What changes you made and why
-   - Screenshots for UI changes
-   - Any breaking changes
-   - Related issue numbers
-
-3. **Size**: Keep PRs focused and reasonably sized
-   - Prefer multiple small PRs over one large PR
-   - Each PR should address a single concern
-
-### Review Process
-
-1. All PRs require at least one review
-2. Address feedback promptly and professionally
-3. Be open to suggestions and improvements
-4. Maintain a collaborative attitude
-
-## 🐛 Reporting Issues
-
-### Bug Reports
-
-When reporting bugs, please include:
-
-- **Environment**: OS, Node.js version, browser
-- **Steps to reproduce** the issue
-- **Expected behavior**
-- **Actual behavior**
-- **Screenshots** if applicable
-- **Error messages** or console logs
-
-### Feature Requests
-
-For feature requests, please provide:
-
-- **Problem statement**: What problem does this solve?
-- **Proposed solution**: How should it work?
-- **Alternatives considered**: Other approaches you've thought of
-- **Additional context**: Any relevant information
-
-## 🏗️ Architecture Guidelines
-
-### State Management
-
-- Use **Zustand** for global state
-- Use **TanStack Query** for server state
-- Keep state as local as possible
-- Use proper TypeScript types for state
-
-### API Integration
-
-- Use the existing API client patterns
-- Handle loading and error states properly
-- Implement proper error boundaries
-- Use optimistic updates where appropriate
-
-### Performance
-
-- Use React.memo() for expensive components
-- Implement proper loading states
-- Optimize images and assets
-- Use code splitting where beneficial
-
-## 🤝 Community Guidelines
-
-### Code of Conduct
-
-- Be respectful and inclusive
-- Welcome newcomers and help them learn
-- Focus on constructive feedback
-- Maintain professionalism in all interactions
-
-### Getting Help
-
-- **Discord**: [Join our Discord server](https://supermemory.link/discord)
-- **GitHub Discussions**: For questions and ideas
-- **Issues**: For bug reports and feature requests
-- **Email**: [support@supermemory.ai](mailto:support@supermemory.ai)
-
-## 📄 License
-
-By contributing to supermemory, you agree that your contributions will be licensed under the same license as the project.
-
-## 🙏 Recognition
-
-All contributors will be recognized in our README and release notes. We appreciate every contribution, no matter how small!
+Open an issue on GitHub: [github.com/MorkMindy74/Funes/issues](https://github.com/MorkMindy74/Funes/issues)
 
 ---
 
-Thank you for contributing to supermemory! Together, we're building the future of AI-powered knowledge management. 🚀
+*Funes is a fork of [supermemory](https://github.com/supermemoryai/supermemory) by Sidhant Srivastava. See [README.md](README.md) for the full tribute.*
