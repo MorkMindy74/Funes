@@ -10,7 +10,7 @@ import {
 } from "better-auth/client/plugins"
 
 export const middlewareAuthClient = createAuthClient({
-	baseURL: process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://api.supermemory.ai",
+	baseURL: process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001",
 	fetchOptions: {
 		throw: true,
 	},

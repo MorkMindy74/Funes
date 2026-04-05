@@ -228,7 +228,7 @@ export const apiSchema = createSchema({
 })
 
 export const $fetch = createFetch({
-	baseURL: `${process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://api.supermemory.ai"}/v3`,
+	baseURL: `${process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001"}/v3`,
 	credentials: "include",
 	retry: {
 		attempts: 3,

@@ -1,416 +1,273 @@
-import Supermemory from "supermemory"
-
-const MAX_CHARS = 200000 // ~50k tokens (character-based limit)
+const MAX_CHARS = 200000
 const DEFAULT_PROJECT_ID = "sm_project_default"
 
 export type Memory =
-	| {
-			id: string
-			memory: string
-			similarity: number
-			title?: string
-			content?: string
-	  }
-	| {
-			id: string
-			chunk: string
-			similarity: number
-			title?: string
-			content?: string
-	  }
+  | { id: string; memory: string; similarity: number; title?: string; content?: string }
+  | { id: string; chunk: string; similarity: number; title?: string; content?: string }
 
 export interface SearchResult {
-	results: Memory[]
-	total: number
-	timing: number
+  results: Memory[]
+  total: number
+  timing: number
 }
 
 export interface Profile {
-	static: string[]
-	dynamic: string[]
+  static: string[]
+  dynamic: string[]
 }
 
 export interface ProfileResponse {
-	profile: Profile
-	searchResults?: SearchResult
+  profile: Profile
+  searchResults?: SearchResult
 }
 
 export interface Project {
-	id: string
-	name: string
-	containerTag: string
-	createdAt: string
-	updatedAt: string
-	isExperimental: boolean
-	documentCount?: number
+  id: string
+  name: string
+  containerTag: string
+  createdAt: string
+  updatedAt: string
+  isExperimental: boolean
+  documentCount?: number
 }
 
-// Documents API types
 export interface DocumentMemoryEntry {
-	id: string
-	memory: string
-	spaceId: string
-	isStatic?: boolean
-	isLatest?: boolean
-	isForgotten?: boolean
-	forgetAfter?: string | null
-	forgetReason?: string | null
-	version?: number
-	parentMemoryId?: string | null
-	rootMemoryId?: string | null
-	createdAt: string
-	updatedAt: string
+  id: string
+  memory: string
+  spaceId: string
+  isStatic?: boolean
+  isLatest?: boolean
+  isForgotten?: boolean
+  version?: number
+  createdAt: string
+  updatedAt: string
 }
 
 export interface DocumentWithMemories {
-	id: string
-	title: string | null
-	summary?: string | null
-	type: string
-	createdAt: string
-	updatedAt: string
-	memoryEntries: DocumentMemoryEntry[]
+  id: string
+  title: string | null
+  summary?: string | null
+  type: string
+  createdAt: string
+  updatedAt: string
+  memoryEntries: DocumentMemoryEntry[]
 }
 
 export interface DocumentsApiResponse {
-	documents: DocumentWithMemories[]
-	pagination: {
-		currentPage: number
-		limit: number
-		totalItems: number
-		totalPages: number
-	}
+  documents: DocumentWithMemories[]
+  pagination: {
+    currentPage: number
+    limit: number
+    totalItems: number
+    totalPages: number
+  }
 }
 
 export function getMemoryText(m: Memory): string {
-	return "memory" in m ? m.memory : m.chunk
+  return "memory" in m ? m.memory : m.chunk
 }
 
 function limitByChars(text: string, maxChars = MAX_CHARS): string {
-	return text.length > maxChars ? `${text.slice(0, maxChars)}...` : text
+  return text.length > maxChars ? `${text.slice(0, maxChars)}...` : text
 }
 
-// Type for SDK search result item
-interface SDKResult {
-	id: string
-	memory?: string
-	chunk?: string
-	content?: string
-	similarity: number
-	title?: string
-	context?: string
-}
+/**
+ * Client that calls the Funes local API directly via fetch.
+ * No external SDK dependency.
+ */
+export class FunesClient {
+  private bearerToken: string
+  private containerTag: string
+  private apiUrl: string
 
-export class SupermemoryClient {
-	private client: Supermemory
-	private containerTag: string
-	private bearerToken: string
-	private apiUrl: string
+  constructor(
+    bearerToken: string,
+    containerTag?: string,
+    apiUrl = "http://localhost:3001",
+  ) {
+    this.bearerToken = bearerToken
+    this.apiUrl = apiUrl
+    this.containerTag = containerTag || DEFAULT_PROJECT_ID
+  }
 
-	constructor(
-		bearerToken: string,
-		containerTag?: string,
-		apiUrl = "https://api.supermemory.ai",
-	) {
-		this.bearerToken = bearerToken
-		this.apiUrl = apiUrl
-		this.client = new Supermemory({
-			apiKey: bearerToken,
-			baseURL: apiUrl,
-		})
-		this.containerTag = containerTag || DEFAULT_PROJECT_ID
-	}
+  private headers(): Record<string, string> {
+    return {
+      Authorization: `Bearer ${this.bearerToken}`,
+      "Content-Type": "application/json",
+    }
+  }
 
-	// Create memory using SDK
-	async createMemory(
-		content: string,
-	): Promise<{ id: string; status: string; containerTag: string }> {
-		try {
-			const result = await this.client.add({
-				content,
-				containerTag: this.containerTag,
-				metadata: {
-					sm_source: "mcp",
-				},
-			})
-			return {
-				id: result.id,
-				status: "queued",
-				containerTag: this.containerTag,
-			}
-		} catch (error) {
-			this.handleError(error)
-		}
-	}
+  async createMemory(content: string): Promise<{ id: string; status: string; containerTag: string }> {
+    const response = await fetch(`${this.apiUrl}/v3/documents`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({
+        content,
+        containerTags: [this.containerTag],
+        metadata: { sm_source: "mcp" },
+      }),
+    })
+    if (!response.ok) this.handleHttpError(response)
+    const data = await response.json() as any
+    return {
+      id: data.id ?? data.documentId ?? "unknown",
+      status: "queued",
+      containerTag: this.containerTag,
+    }
+  }
 
-	// Delete/forget memory - try exact match first, then semantic search
-	async forgetMemory(
-		content: string,
-	): Promise<{ success: boolean; message: string; containerTag: string }> {
-		try {
-			// Try exact content matching first
-			try {
-				const result = await this.client.memories.forget({
-					content: content,
-					containerTag: this.containerTag,
-				})
+  async forgetMemory(content: string): Promise<{ success: boolean; message: string; containerTag: string }> {
+    // Search for matching memory first
+    const searchResult = await this.search(content, 5, 0.85)
+    if (searchResult.results.length === 0) {
+      return {
+        success: false,
+        message: "No matching memory found to forget.",
+        containerTag: this.containerTag,
+      }
+    }
 
-				return {
-					success: true,
-					message: `Successfully forgot memory (exact match) with ID: ${result.id}`,
-					containerTag: this.containerTag,
-				}
-			} catch (error: unknown) {
-				// If not 404, it's a real error - re-throw it
-				const status =
-					error && typeof error === "object" && "status" in error
-						? (error as Record<string, unknown>).status
-						: undefined
-				if (status !== 404) {
-					throw error
-				}
-				// Otherwise continue to semantic search fallback
-			}
+    const memoryToDelete = searchResult.results[0]
+    if (!memoryToDelete) {
+      return {
+        success: false,
+        message: "No matching memory found.",
+        containerTag: this.containerTag,
+      }
+    }
 
-			// Fallback to semantic search if exact match fails
-			const SIMILARITY_THRESHOLD = 0.85 // High threshold - only very similar memories
-			const searchResult = await this.search(content, 5, SIMILARITY_THRESHOLD)
+    // Delete the document
+    const response = await fetch(`${this.apiUrl}/v3/documents/${memoryToDelete.id}`, {
+      method: "DELETE",
+      headers: this.headers(),
+    })
 
-			if (searchResult.results.length === 0) {
-				return {
-					success: false,
-					message: `No matching memory found to forget. Tried exact match and semantic search with similarity threshold ${SIMILARITY_THRESHOLD}.`,
-					containerTag: this.containerTag,
-				}
-			}
+    if (!response.ok) {
+      return {
+        success: false,
+        message: `Failed to delete: ${response.statusText}`,
+        containerTag: this.containerTag,
+      }
+    }
 
-			// Only actual memories (not chunks) can be forgotten
-			const memoryToDelete = searchResult.results.find((r) => "memory" in r)
-			if (!memoryToDelete) {
-				return {
-					success: false,
-					message:
-						"No matching memory found to forget (only document chunks matched in semantic search).",
-					containerTag: this.containerTag,
-				}
-			}
+    return {
+      success: true,
+      message: `Forgot memory (similarity: ${memoryToDelete.similarity.toFixed(2)}): "${limitByChars(getMemoryText(memoryToDelete), 100)}"`,
+      containerTag: this.containerTag,
+    }
+  }
 
-			// Delete using the ID from semantic search
-			await this.client.memories.forget({
-				id: memoryToDelete.id,
-				containerTag: this.containerTag,
-			})
+  async search(query: string, limit = 10, threshold?: number): Promise<SearchResult> {
+    const startTime = Date.now()
+    const response = await fetch(`${this.apiUrl}/v3/search`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({
+        q: query,
+        limit,
+        containerTags: [this.containerTag],
+        chunkThreshold: threshold ?? 0,
+      }),
+    })
+    if (!response.ok) this.handleHttpError(response)
+    const data = await response.json() as any
 
-			const memoryText =
-				getMemoryText(memoryToDelete) || memoryToDelete.content || ""
-			return {
-				success: true,
-				message: `Forgot similar memory (semantic match, similarity: ${memoryToDelete.similarity.toFixed(2)}): "${limitByChars(memoryText, 100)}"`,
-				containerTag: this.containerTag,
-			}
-		} catch (error) {
-			this.handleError(error)
-		}
-	}
+    const results: Memory[] = (data.results || []).map((r: any) => {
+      const chunks = r.chunks || []
+      const bestChunk = chunks.sort((a: any, b: any) => (b.score || 0) - (a.score || 0))[0]
+      const text = limitByChars(bestChunk?.content || r.title || "")
+      return {
+        id: r.documentId,
+        memory: text,
+        similarity: r.score || 0,
+        title: r.title,
+        content: bestChunk?.content,
+      }
+    })
 
-	// Search memories using SDK
-	async search(
-		query: string,
-		limit = 10,
-		threshold?: number,
-	): Promise<SearchResult> {
-		try {
-			const result = await this.client.search.memories({
-				q: query,
-				limit,
-				containerTag: this.containerTag,
-				searchMode: "hybrid",
-				threshold, // Optional threshold parameter
-			})
+    return {
+      results,
+      total: data.total || results.length,
+      timing: Date.now() - startTime,
+    }
+  }
 
-			// Normalize and limit response size — preserve memory vs chunk distinction
-			const results: Memory[] = (result.results as SDKResult[]).map((r) => {
-				const text = limitByChars(
-					r.content || r.memory || r.chunk || r.context || "",
-				)
-				const base = {
-					id: r.id,
-					similarity: r.similarity,
-					title: r.title,
-					content: r.content,
-				}
-				if (r.chunk && !r.memory) {
-					return { ...base, chunk: text }
-				}
-				return { ...base, memory: text }
-			})
+  async getProfile(query?: string): Promise<ProfileResponse> {
+    const response = await fetch(`${this.apiUrl}/v4/profile`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({
+        q: query,
+        containerTag: this.containerTag,
+      }),
+    })
+    if (!response.ok) this.handleHttpError(response)
+    const data = await response.json() as any
 
-			return {
-				results,
-				total: result.total,
-				timing: result.timing,
-			}
-		} catch (error) {
-			this.handleError(error)
-		}
-	}
+    const profile: Profile = {
+      static: (data.static || []).map((f: any) => f.memory || f),
+      dynamic: (data.dynamic || []).map((m: any) => m.memory || m),
+    }
 
-	// Get user profile using SDK
-	async getProfile(query?: string): Promise<ProfileResponse> {
-		try {
-			const result = await this.client.profile({
-				containerTag: this.containerTag,
-				q: query,
-			})
+    const response2: ProfileResponse = { profile }
 
-			const response: ProfileResponse = {
-				profile: {
-					static: result.profile?.static || [],
-					dynamic: result.profile?.dynamic || [],
-				},
-			}
+    if (query && data.search?.length > 0) {
+      response2.searchResults = {
+        results: data.search.map((r: any) => ({
+          id: r.id || "unknown",
+          memory: limitByChars(r.memory || ""),
+          similarity: r.score || 0,
+        })),
+        total: data.search.length,
+        timing: 0,
+      }
+    }
 
-			if (result.searchResults) {
-				response.searchResults = {
-					results: (result.searchResults.results as SDKResult[]).map((r) => {
-						const text = limitByChars(
-							r.content || r.memory || r.chunk || r.context || "",
-						)
-						const base = {
-							id: r.id,
-							similarity: r.similarity,
-							title: r.title,
-							content: r.content,
-						}
-						if (r.chunk && !r.memory) {
-							return { ...base, chunk: text }
-						}
-						return { ...base, memory: text }
-					}),
-					total: result.searchResults.total,
-					timing: result.searchResults.timing,
-				}
-			}
+    return response2
+  }
 
-			return response
-		} catch (error) {
-			this.handleError(error)
-		}
-	}
+  async getProjects(): Promise<string[]> {
+    const response = await fetch(`${this.apiUrl}/v3/projects`, {
+      method: "GET",
+      headers: this.headers(),
+    })
+    if (!response.ok) this.handleHttpError(response)
+    const data = await response.json() as any
+    return (data.projects || []).map((p: any) => p.containerTag)
+  }
 
-	// Get projects list
-	async getProjects(): Promise<string[]> {
-		try {
-			const response = await fetch(`${this.apiUrl}/v3/projects`, {
-				method: "GET",
-				headers: {
-					Authorization: `Bearer ${this.bearerToken}`,
-					"Content-Type": "application/json",
-				},
-			})
+  async getDocuments(containerTags?: string[], page = 1, limit = 200): Promise<DocumentsApiResponse> {
+    const response = await fetch(`${this.apiUrl}/v3/documents/documents`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({
+        page,
+        limit,
+        sort: "createdAt",
+        order: "desc",
+        containerTags,
+      }),
+    })
+    if (!response.ok) this.handleHttpError(response)
+    return await response.json() as DocumentsApiResponse
+  }
 
-			if (!response.ok) {
-				if (response.status === 401) {
-					throw new Error("Authentication failed. Please re-authenticate.")
-				}
-				throw new Error(`Failed to fetch projects: ${response.statusText}`)
-			}
-
-			const data = (await response.json()) as {
-				projects: Project[]
-			}
-			return data.projects?.map((p) => p.containerTag) || []
-		} catch (error) {
-			this.handleError(error)
-		}
-	}
-
-	// Fetch documents with their memory entries
-	async getDocuments(
-		containerTags?: string[],
-		page = 1,
-		limit = 200,
-	): Promise<DocumentsApiResponse> {
-		try {
-			const response = await fetch(`${this.apiUrl}/v3/documents/documents`, {
-				method: "POST",
-				headers: {
-					Authorization: `Bearer ${this.bearerToken}`,
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					page,
-					limit,
-					sort: "createdAt",
-					order: "desc",
-					containerTags,
-				}),
-			})
-			if (!response.ok) {
-				throw Object.assign(new Error("Failed to fetch documents"), {
-					status: response.status,
-				})
-			}
-			return (await response.json()) as DocumentsApiResponse
-		} catch (error) {
-			this.handleError(error)
-		}
-	}
-
-	private handleError(error: unknown): never {
-		// Handle network/fetch errors
-		if (error instanceof TypeError) {
-			if (
-				error.message.includes("fetch") ||
-				error.message.includes("network")
-			) {
-				throw new Error(
-					"Network error. Please check your connection and try again.",
-				)
-			}
-		}
-
-		// Handle HTTP status errors from SDK/fetch
-		if (error && typeof error === "object" && "status" in error) {
-			const status = (error as { status: number }).status
-			const message =
-				"message" in error ? (error as { message: string }).message : undefined
-
-			switch (status) {
-				case 400:
-				case 422:
-					throw new Error(
-						message || "Invalid request parameters. Please check your input.",
-					)
-				case 401:
-					throw new Error("Authentication failed. Please re-authenticate.")
-				case 402:
-					throw new Error("Memory limit reached. Upgrade at supermemory.ai")
-				case 403:
-					throw new Error(
-						"Access forbidden. Your account may be restricted or blocked.",
-					)
-				case 404:
-					throw new Error("Memory not found. It may have been deleted.")
-				case 429:
-					throw new Error(
-						"Rate limit exceeded. Please wait a moment and try again.",
-					)
-				default:
-					if (status >= 500) {
-						throw new Error(
-							"Server error. The service may be temporarily unavailable. Please try again later.",
-						)
-					}
-			}
-		}
-
-		// Re-throw Error instances as-is
-		if (error instanceof Error) {
-			throw error
-		}
-
-		// Wrap unknown errors
-		throw new Error(`An unexpected error occurred: ${String(error)}`)
-	}
+  private handleHttpError(response: Response): never {
+    const status = response.status
+    switch (status) {
+      case 401:
+        throw new Error("Authentication failed. Please re-authenticate.")
+      case 403:
+        throw new Error("Access forbidden.")
+      case 404:
+        throw new Error("Resource not found.")
+      case 429:
+        throw new Error("Rate limit exceeded. Please wait and try again.")
+      default:
+        if (status >= 500) {
+          throw new Error("Server error. Please try again later.")
+        }
+        throw new Error(`Request failed with status ${status}: ${response.statusText}`)
+    }
+  }
 }

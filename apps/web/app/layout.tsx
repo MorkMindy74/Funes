@@ -18,9 +18,9 @@ const font = Space_Grotesk({
 })
 
 export const metadata: Metadata = {
-	metadataBase: new URL("https://app.supermemory.ai"),
-	description: "Your memories, wherever you are",
-	title: "supermemory app",
+	metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+	description: "Your AI memory, self-hosted and free",
+	title: "Funes",
 }
 
 export default function RootLayout({
@@ -51,22 +51,22 @@ export default function RootLayout({
 					<AutumnProvider
 						backendUrl={
 							process.env.NEXT_PUBLIC_BACKEND_URL ??
-							"https://api.supermemory.ai"
+							"http://localhost:3001"
 						}
 						includeCredentials={true}
 					>
-						<QueryProvider>
-							<AuthProvider>
-								<PostHogProvider>
-									<ErrorTrackingProvider>
-										<NuqsAdapter>
-											<Suspense>{children}</Suspense>
-											<Toaster />
-										</NuqsAdapter>
-									</ErrorTrackingProvider>
-								</PostHogProvider>
-							</AuthProvider>
-						</QueryProvider>
+					<QueryProvider>
+						<AuthProvider>
+							<PostHogProvider>
+								<ErrorTrackingProvider>
+									<NuqsAdapter>
+										<Suspense>{children}</Suspense>
+										<Toaster />
+									</NuqsAdapter>
+								</ErrorTrackingProvider>
+							</PostHogProvider>
+						</AuthProvider>
+					</QueryProvider>
 					</AutumnProvider>
 				</ThemeProvider>
 			</body>
