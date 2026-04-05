@@ -320,9 +320,10 @@ function ServiceRow({ name, check }: { name: string; check: ServiceCheck }) {
 		redis: "Redis",
 		ollama: "Ollama (LLM)",
 		firecrawl: "Firecrawl (Scraping)",
+		ocr: "OCR (Image/PDF)",
 	}
 
-	const isOptional = name === "ollama" || name === "firecrawl"
+	const isOptional = name === "ollama" || name === "firecrawl" || name === "ocr"
 
 	return (
 		<div className="flex items-center justify-between text-sm">

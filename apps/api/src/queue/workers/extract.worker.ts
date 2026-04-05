@@ -34,6 +34,8 @@ export const extractWorker = new Worker<ExtractJobData>(
 			const extractor = await getExtractor(undefined, {
 				firecrawlUrl: env.FIRECRAWL_URL || undefined,
 				ocrProvider: env.OCR_PROVIDER || undefined,
+				chandraUrl: env.CHANDRA_URL || undefined,
+				ollamaUrl: env.OLLAMA_URL || undefined,
 			})
 
 			// Extract content to markdown

@@ -80,7 +80,35 @@ setupRoutes.get("/status", async (c) => {
 		checks.firecrawl = { ok: false, message: "Not configured (optional — set FIRECRAWL_URL)" }
 	}
 
-	// 5. Check if any users exist (first-run detection)
+	// 5. OCR provider (optional)
+	if (env.OCR_PROVIDER) {
+		if (env.OCR_PROVIDER === "ollama-ocr") {
+			checks.ocr = env.OLLAMA_URL
+				? { ok: true, message: `Ollama Vision OCR (model: ${env.OLLAMA_OCR_MODEL || env.OLLAMA_MODEL || "llava"})` }
+				: { ok: false, message: "OCR_PROVIDER=ollama-ocr but OLLAMA_URL not set" }
+		} else if (env.OCR_PROVIDER === "chandra") {
+			if (env.CHANDRA_URL) {
+				try {
+					const resp = await fetch(`${env.CHANDRA_URL}/health`, {
+						signal: AbortSignal.timeout(3000),
+					}).catch(() => null)
+					checks.ocr = resp?.ok
+						? { ok: true, message: "Chandra OCR" }
+						: { ok: false, message: "Chandra not responding" }
+				} catch {
+					checks.ocr = { ok: false, message: "Cannot reach Chandra" }
+				}
+			} else {
+				checks.ocr = { ok: false, message: "OCR_PROVIDER=chandra but CHANDRA_URL not set" }
+			}
+		} else {
+			checks.ocr = { ok: false, message: `Unknown OCR_PROVIDER: ${env.OCR_PROVIDER}` }
+		}
+	} else {
+		checks.ocr = { ok: false, message: "Not configured (optional — set OCR_PROVIDER)" }
+	}
+
+	// 6. Check if any users exist (first-run detection)
 	let hasUsers = false
 	let userCount = 0
 	try {

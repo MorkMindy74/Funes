@@ -25,6 +25,7 @@ export const env = {
 	// Optional: Ollama for LLM features
 	OLLAMA_URL: process.env.OLLAMA_URL ?? "",
 	OLLAMA_MODEL: process.env.OLLAMA_MODEL ?? "llama3.2",
+	OLLAMA_OCR_MODEL: process.env.OLLAMA_OCR_MODEL ?? "", // Vision model for OCR (e.g. "llava", "llama3.2-vision")
 
 	// Optional: Embedding model
 	EMBEDDING_MODEL: process.env.EMBEDDING_MODEL ?? "Xenova/all-MiniLM-L6-v2",
