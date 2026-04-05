@@ -15,7 +15,7 @@ import { nanoid } from "nanoid"
 import { db } from "../db/index.js"
 import { memoryEntries, memoryDocumentSources } from "../db/schema.js"
 import { generateEmbedding } from "./embeddings.js"
-import { searchMemories, indexMemories } from "../vector/lancedb.js"
+import { searchMemories, indexMemories } from "../vector/index.js"
 import { MemoryLevel, type ExtractedMemory } from "./memory-types.js"
 import { logger } from "../logger.js"
 

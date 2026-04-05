@@ -8,7 +8,7 @@ import {
 	chunks,
 	documentsToSpaces,
 } from "../../db/schema.js"
-import { indexChunks } from "../../vector/lancedb.js"
+import { indexChunks } from "../../vector/index.js"
 import { extractMemories } from "../../processing/memory-extractor.js"
 import { consolidateOrCreate } from "../../processing/memory-manager.js"
 import { extractGraph } from "../../processing/entity-extractor.js"

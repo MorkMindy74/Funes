@@ -108,7 +108,23 @@ setupRoutes.get("/status", async (c) => {
 		checks.ocr = { ok: false, message: "Not configured (optional — set OCR_PROVIDER)" }
 	}
 
-	// 6. Check if any users exist (first-run detection)
+	// 6. Vector backend
+	if (env.VECTOR_BACKEND === "leann" && env.LEANN_URL) {
+		try {
+			const resp = await fetch(`${env.LEANN_URL.replace(/\/$/, "")}/health`, {
+				signal: AbortSignal.timeout(3000),
+			}).catch(() => null)
+			checks.vectorBackend = resp?.ok
+				? { ok: true, message: "LEANN (97% storage reduction)" }
+				: { ok: false, message: "LEANN configured but not responding" }
+		} catch {
+			checks.vectorBackend = { ok: false, message: "Cannot reach LEANN" }
+		}
+	} else {
+		checks.vectorBackend = { ok: true, message: "LanceDB (embedded, default)" }
+	}
+
+	// 7. Check if any users exist (first-run detection)
 	let hasUsers = false
 	let userCount = 0
 	try {

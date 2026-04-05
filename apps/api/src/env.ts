@@ -30,6 +30,11 @@ export const env = {
 	// Optional: Embedding model
 	EMBEDDING_MODEL: process.env.EMBEDDING_MODEL ?? "Xenova/all-MiniLM-L6-v2",
 
+	// Optional: Vector backend (default: lancedb embedded)
+	VECTOR_BACKEND: process.env.VECTOR_BACKEND ?? "lancedb", // "lancedb" | "leann"
+	LEANN_URL: process.env.LEANN_URL ?? "",
+	LEANN_API_KEY: process.env.LEANN_API_KEY ?? "",
+
 	// Optional: External services (M7+)
 	FIRECRAWL_URL: process.env.FIRECRAWL_URL ?? "",
 	OCR_PROVIDER: process.env.OCR_PROVIDER ?? "", // "glm-ocr" | "chandra" | ""

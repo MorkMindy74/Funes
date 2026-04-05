@@ -4,7 +4,7 @@ import { db } from "../db/index.js"
 import { memoryEntries, spaces } from "../db/schema.js"
 import { getSession } from "../middleware/auth.js"
 import { generateEmbedding } from "../processing/embeddings.js"
-import { searchMemories } from "../vector/lancedb.js"
+import { searchMemories } from "../vector/index.js"
 import { logger } from "../logger.js"
 
 export const profileRoutes = new Hono()

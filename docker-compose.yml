@@ -59,6 +59,10 @@ services:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
       # Optional: Firecrawl for advanced web scraping
       FIRECRAWL_URL: ${FIRECRAWL_URL:-}
+      # Optional: LEANN vector backend (97% storage reduction)
+      VECTOR_BACKEND: ${VECTOR_BACKEND:-lancedb}
+      LEANN_URL: ${LEANN_URL:-}
+      LEANN_API_KEY: ${LEANN_API_KEY:-}
     volumes:
       - api_data:/data
     ports:
@@ -119,6 +123,24 @@ services:
     ports:
       - "3004:3004"
 
+  # ─── LEANN (Optional — 97% vector storage reduction) ────────────────
+  leann:
+    image: ghcr.io/funes-app/leann:latest
+    profiles: ["with-leann"]
+    restart: unless-stopped
+    environment:
+      PORT: 3005
+      LEANN_STORAGE_DIR: /data/leann
+    volumes:
+      - leann_data:/data/leann
+    ports:
+      - "3005:3005"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
   # ─── Ollama (Optional — local LLM) ─────────────────────────────────
   ollama:
     image: ollama/ollama:latest
@@ -133,4 +155,5 @@ volumes:
   postgres_data:
   redis_data:
   api_data:
+  leann_data:
   ollama_data:

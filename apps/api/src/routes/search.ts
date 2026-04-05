@@ -4,7 +4,7 @@ import { db } from "../db/index.js"
 import { documents, chunks, spaces, documentsToSpaces, memoryEntries } from "../db/schema.js"
 import { getSession } from "../middleware/auth.js"
 import { generateEmbedding } from "../processing/embeddings.js"
-import { searchChunks, searchMemories } from "../vector/lancedb.js"
+import { searchChunks, searchMemories } from "../vector/index.js"
 import { logger } from "../logger.js"
 
 export const searchRoutes = new Hono()
