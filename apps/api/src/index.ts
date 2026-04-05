@@ -14,6 +14,7 @@ import { connectionsRoutes } from "./routes/connections.js"
 import { analyticsRoutes } from "./routes/analytics.js"
 import { profileRoutes } from "./routes/profile.js"
 import { chatRoutes } from "./routes/chat.js"
+import { importExportRoutes } from "./routes/import-export.js"
 
 const app = new Hono()
 
@@ -89,6 +90,12 @@ v3.get("/container-tags/list", async (c) => {
 v3.get("/mcp/has-login", (c) => c.json({ previousLogin: true }))
 
 app.route("/v3", v3)
+
+// ─── Import/Export Routes ──────────────────────────────────────────
+const dataApp = new Hono()
+dataApp.use("*", authMiddleware)
+dataApp.route("/", importExportRoutes)
+app.route("/v3/data", dataApp)
 
 // ─── Chat Routes (top-level, frontend calls /chat directly) ────────
 const chatApp = new Hono()
