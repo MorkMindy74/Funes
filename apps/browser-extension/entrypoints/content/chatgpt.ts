@@ -13,6 +13,7 @@ import {
 	createChatGPTInputBarElement,
 	DOMUtils,
 } from "../../utils/ui-components"
+import { sanitizeHTML } from "../../utils/sanitize"
 
 let chatGPTDebounceTimeout: NodeJS.Timeout | null = null
 let chatGPTRouteObserver: MutationObserver | null = null
@@ -159,7 +160,7 @@ async function getRelatedMemoriesForChatGPT(actionSource: string) {
 		if (response?.success && response?.data) {
 			const promptElement = document.getElementById("prompt-textarea")
 			if (promptElement) {
-				promptElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${response.data}</div>`
+				promptElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${sanitizeHTML(response.data)}</div>`
 				console.log(
 					"Prompt element dataset:",
 					promptElement.dataset.supermemories,
@@ -319,10 +320,12 @@ function updateChatGPTIconFeedback(
 		position: relative;
 	`
 
-	feedbackDiv.innerHTML = `
-		<span>✓</span>
-		<span>${message}</span>
-	`
+	const checkSpan = document.createElement("span")
+	checkSpan.textContent = "✓"
+	const messageSpan = document.createElement("span")
+	messageSpan.textContent = message
+	feedbackDiv.appendChild(checkSpan)
+	feedbackDiv.appendChild(messageSpan)
 
 	if (message === "Included Memories" && iconElement.dataset.memoriesData) {
 		const popup = document.createElement("div")
@@ -354,9 +357,10 @@ function updateChatGPTIconFeedback(
 			border-bottom: 1px solid #333;
 			opacity: 0.8;
 		`
-		header.innerHTML = `
-			<span style="font-weight: 600; color: #fff;">Included Memories</span>
-		`
+		const headerSpan = document.createElement("span")
+		headerSpan.style.cssText = "font-weight: 600; color: #fff;"
+		headerSpan.textContent = "Included Memories"
+		header.appendChild(headerSpan)
 
 		const content = document.createElement("div")
 		content.style.cssText = `
@@ -471,7 +475,7 @@ function updateChatGPTIconFeedback(
 
 				const promptElement = document.getElementById("prompt-textarea")
 				if (promptElement) {
-					promptElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${updatedMemories}</div>`
+					promptElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${sanitizeHTML(updatedMemories)}</div>`
 				}
 
 				content
@@ -647,7 +651,7 @@ function setupChatGPTPromptCapture() {
 			promptTextarea &&
 			!promptContent.includes("Supermemories of user")
 		) {
-			promptTextarea.innerHTML = `${promptTextarea.innerHTML} ${storedMemories}`
+			promptTextarea.innerHTML = `${promptTextarea.innerHTML} ${sanitizeHTML(storedMemories)}`
 			promptContent = promptTextarea.textContent || ""
 		}
 

@@ -10,6 +10,7 @@ import {
 	autoCapturePromptsEnabled,
 } from "../../utils/storage"
 import { createT3InputBarElement, DOMUtils } from "../../utils/ui-components"
+import { sanitizeHTML } from "../../utils/sanitize"
 
 let t3DebounceTimeout: NodeJS.Timeout | null = null
 let t3RouteObserver: MutationObserver | null = null
@@ -240,10 +241,10 @@ async function getRelatedMemoriesForT3(actionSource: string) {
 			if (textareaElement) {
 				if (textareaElement.tagName === "TEXTAREA") {
 					;(textareaElement as HTMLTextAreaElement).dataset.supermemories =
-						`<br>Supermemories of user (only for the reference): ${response.data}</br>`
+						`<br>Supermemories of user (only for the reference): ${sanitizeHTML(response.data)}</br>`
 				} else {
 					;(textareaElement as HTMLElement).dataset.supermemories =
-						`<br>Supermemories of user (only for the reference): ${response.data}</br>`
+						`<br>Supermemories of user (only for the reference): ${sanitizeHTML(response.data)}</br>`
 				}
 
 				iconElement.dataset.memoriesData = response.data
@@ -296,10 +297,12 @@ function updateT3IconFeedback(
 		position: relative;
 	`
 
-	feedbackDiv.innerHTML = `
-		<span>✓</span>
-		<span>${message}</span>
-	`
+	const checkSpan = document.createElement("span")
+	checkSpan.textContent = "✓"
+	const messageSpan = document.createElement("span")
+	messageSpan.textContent = message
+	feedbackDiv.appendChild(checkSpan)
+	feedbackDiv.appendChild(messageSpan)
 
 	if (message === "Included Memories" && iconElement.dataset.memoriesData) {
 		const popup = document.createElement("div")
@@ -331,9 +334,10 @@ function updateT3IconFeedback(
 			border-bottom: 1px solid #333;
 			opacity: 0.8;
 		`
-		header.innerHTML = `
-			<span style="font-weight: 600; color: #fff;">Included Memories</span>
-		`
+		const headerSpan = document.createElement("span")
+		headerSpan.style.cssText = "font-weight: 600; color: #fff;"
+		headerSpan.textContent = "Included Memories"
+		header.appendChild(headerSpan)
 
 		const content = document.createElement("div")
 		content.style.cssText = `
@@ -450,7 +454,7 @@ function updateT3IconFeedback(
 					(document.querySelector("textarea") as HTMLTextAreaElement) ||
 					(document.querySelector('div[contenteditable="true"]') as HTMLElement)
 				if (textareaElement) {
-					textareaElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${updatedMemories}</div>`
+					textareaElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${sanitizeHTML(updatedMemories)}</div>`
 				}
 
 				content
@@ -537,7 +541,7 @@ function setupT3PromptCapture() {
 					`${promptContent} ${storedMemories}`
 				promptContent = (textareaElement as HTMLTextAreaElement).value
 			} else {
-				textareaElement.innerHTML = `${textareaElement.innerHTML} ${storedMemories}`
+				textareaElement.innerHTML = `${textareaElement.innerHTML} ${sanitizeHTML(storedMemories)}`
 				promptContent =
 					textareaElement.textContent || textareaElement.innerText || ""
 			}

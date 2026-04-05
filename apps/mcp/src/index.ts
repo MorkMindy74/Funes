@@ -3,7 +3,10 @@ import { Hono } from "hono"
 import { SupermemoryMCP } from "./server"
 import { isApiKey, validateApiKey, validateOAuthToken } from "./auth"
 import { initPosthog } from "./posthog"
+import { createLogger } from "@repo/lib/logger"
 import type { ContentfulStatusCode } from "hono/utils/http-status"
+
+const logger = createLogger("mcp-index")
 
 type Bindings = {
 	MCP_SERVER: DurableObjectNamespace
@@ -86,7 +89,7 @@ app.get("/.well-known/oauth-authorization-server", async (c) => {
 		const metadata = await response.json()
 		return c.json(metadata)
 	} catch (error) {
-		console.error("Error fetching OAuth authorization server metadata:", error)
+		logger.error("Error fetching OAuth authorization server metadata", { error: error instanceof Error ? error.message : error })
 		return c.json({ error: "Internal server error" }, 500)
 	}
 })
@@ -124,10 +127,10 @@ app.all("/mcp/*", async (c) => {
 	} | null = null
 
 	if (isApiKey(token)) {
-		console.log("Authenticating with API key")
+		logger.info("Authenticating with API key")
 		authUser = await validateApiKey(token, apiUrl)
 	} else {
-		console.log("Authenticating with OAuth token")
+		logger.info("Authenticating with OAuth token")
 		authUser = await validateOAuthToken(token, apiUrl)
 	}
 

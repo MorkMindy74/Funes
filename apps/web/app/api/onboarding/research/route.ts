@@ -19,6 +19,14 @@ function extractHandle(url: string): string {
 	return (cleaned.split("/")[0] ?? cleaned).split("?")[0] ?? cleaned
 }
 
+function sanitizeForPrompt(input: string, maxLength: number): string {
+	return input
+		.slice(0, maxLength)
+		.replace(/[\x00-\x1F\x7F]/g, "") // strip control characters
+		.replace(/---+|===+|###+ |<\||\|>|\[INST\]|<<SYS>>|<\/s>/gi, "") // strip prompt injection delimiters
+		.trim()
+}
+
 function finalPrompt(handle: string, userContext: string) {
 	return `You are researching a user based on their X/Twitter profile to help personalize their experience.
 
@@ -47,9 +55,16 @@ export async function POST(req: Request) {
 
 		const handle = extractHandle(xUrl)
 
+		if (!/^[a-zA-Z0-9_]{1,15}$/.test(handle)) {
+			return Response.json(
+				{ error: "Invalid X/Twitter handle format" },
+				{ status: 400 },
+			)
+		}
+
 		const contextParts: string[] = []
-		if (name) contextParts.push(`Name: ${name}`)
-		if (email) contextParts.push(`Email: ${email}`)
+		if (name) contextParts.push(`Name: ${sanitizeForPrompt(name, 100)}`)
+		if (email) contextParts.push(`Email: ${sanitizeForPrompt(email, 254)}`)
 		const userContext =
 			contextParts.length > 0
 				? `\n\nAdditional context about the user:\n${contextParts.join("\n")}`

@@ -431,7 +431,7 @@ export class SupermemoryMCP extends McpAgent<Env, unknown, Props> {
 			{
 				description:
 					"User profile and preferences for system context injection. Returns a formatted system message with user's stable preferences and recent activity.",
-				//argsSchema: contextPromptSchema.shape, TODO: commenting out for now as it will add more friction to the user
+				argsSchema: contextPromptSchema.shape,
 			},
 			// @ts-expect-error - zod type inference issue with MCP SDK
 			async (args: ContextPromptArgs) => {

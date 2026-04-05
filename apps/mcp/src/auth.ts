@@ -4,6 +4,10 @@
  * This validates OAuth tokens and API keys by calling the main Supermemory API,
  */
 
+import { createLogger } from "@repo/lib/logger"
+
+const logger = createLogger("mcp-auth")
+
 export interface AuthUser {
 	userId: string
 	apiKey: string
@@ -39,22 +43,15 @@ export async function validateApiKey(
 			const status = sessionResponse.status
 
 			if (status === 401) {
-				console.error("API key validation failed: Invalid or expired API key")
+				logger.error("API key validation failed: Invalid or expired API key", { status })
 			} else if (status === 403) {
-				console.error(
-					"API key validation failed: User is blocked or access forbidden",
-					responseText,
-				)
+				logger.error("API key validation failed: User is blocked or access forbidden", { status, responseText })
 			} else if (status === 429) {
-				console.error("API key validation failed: Rate limit exceeded")
+				logger.error("API key validation failed: Rate limit exceeded", { status })
 			} else if (status >= 500) {
-				console.error(
-					"API key validation failed: Server error",
-					status,
-					responseText,
-				)
+				logger.error("API key validation failed: Server error", { status, responseText })
 			} else {
-				console.error("API key validation failed:", status, responseText)
+				logger.error("API key validation failed", { status, responseText })
 			}
 			return null
 		}
@@ -71,11 +68,11 @@ export async function validateApiKey(
 		} | null
 
 		if (!sessionData?.user?.id) {
-			console.error("Missing user.id in session response:", sessionData)
+			logger.error("Missing user.id in session response", { sessionData })
 			return null
 		}
 
-		console.log("API key validated for user:", sessionData.user.id)
+		logger.info("API key validated for user", { userId: sessionData.user.id })
 
 		return {
 			userId: sessionData.user.id,
@@ -84,7 +81,7 @@ export async function validateApiKey(
 			name: sessionData.user.name,
 		}
 	} catch (error) {
-		console.error("API key validation error:", error)
+		logger.error("API key validation error", { error: error instanceof Error ? error.message : error })
 		return null
 	}
 }
@@ -110,22 +107,15 @@ export async function validateOAuthToken(
 			const status = sessionResponse.status
 
 			if (status === 401) {
-				console.error("Token validation failed: Invalid or expired token")
+				logger.error("Token validation failed: Invalid or expired token", { status })
 			} else if (status === 403) {
-				console.error(
-					"Token validation failed: User is blocked or access forbidden",
-					responseText,
-				)
+				logger.error("Token validation failed: User is blocked or access forbidden", { status, responseText })
 			} else if (status === 429) {
-				console.error("Token validation failed: Rate limit exceeded")
+				logger.error("Token validation failed: Rate limit exceeded", { status })
 			} else if (status >= 500) {
-				console.error(
-					"Token validation failed: Server error",
-					status,
-					responseText,
-				)
+				logger.error("Token validation failed: Server error", { status, responseText })
 			} else {
-				console.error("Token validation failed:", status, responseText)
+				logger.error("Token validation failed", { status, responseText })
 			}
 			return null
 		}
@@ -139,14 +129,11 @@ export async function validateOAuthToken(
 		} | null
 
 		if (!sessionData?.userId || !sessionData?.apiKey) {
-			console.error(
-				"Missing userId or apiKey in session response:",
-				sessionData,
-			)
+			logger.error("Missing userId or apiKey in session response", { sessionData })
 			return null
 		}
 
-		console.log("OAuth validated, got API key for user:", sessionData.userId)
+		logger.info("OAuth validated, got API key for user", { userId: sessionData.userId })
 
 		return {
 			userId: sessionData.userId,
@@ -155,7 +142,7 @@ export async function validateOAuthToken(
 			name: sessionData.name,
 		}
 	} catch (error) {
-		console.error("Token validation error:", error)
+		logger.error("Token validation error", { error: error instanceof Error ? error.message : error })
 		return null
 	}
 }

@@ -13,6 +13,7 @@ import {
 	createClaudeInputBarElement,
 	DOMUtils,
 } from "../../utils/ui-components"
+import { sanitizeHTML } from "../../utils/sanitize"
 
 let claudeDebounceTimeout: NodeJS.Timeout | null = null
 let claudeRouteObserver: MutationObserver | null = null
@@ -230,7 +231,7 @@ async function getRelatedMemoriesForClaude(actionSource: string) {
 			) as HTMLElement
 
 			if (textareaElement) {
-				textareaElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${response.data}</div>`
+				textareaElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${sanitizeHTML(response.data)}</div>`
 				console.log(
 					"Text element dataset:",
 					textareaElement.dataset.supermemories,
@@ -288,10 +289,12 @@ function updateClaudeIconFeedback(
 		position: relative;
 	`
 
-	feedbackDiv.innerHTML = `
-		<span>✓</span>
-		<span>${message}</span>
-	`
+	const checkSpan = document.createElement("span")
+	checkSpan.textContent = "✓"
+	const messageSpan = document.createElement("span")
+	messageSpan.textContent = message
+	feedbackDiv.appendChild(checkSpan)
+	feedbackDiv.appendChild(messageSpan)
 
 	if (message === "Included Memories" && iconElement.dataset.memoriesData) {
 		const popup = document.createElement("div")
@@ -323,9 +326,10 @@ function updateClaudeIconFeedback(
 			border-bottom: 1px solid #333;
 			opacity: 0.8;
 		`
-		header.innerHTML = `
-			<span style="font-weight: 600; color: #fff;">Included Memories</span>
-		`
+		const headerSpan = document.createElement("span")
+		headerSpan.style.cssText = "font-weight: 600; color: #fff;"
+		headerSpan.textContent = "Included Memories"
+		header.appendChild(headerSpan)
 
 		const content = document.createElement("div")
 		content.style.cssText = `
@@ -442,7 +446,7 @@ function updateClaudeIconFeedback(
 					'div[contenteditable="true"]',
 				) as HTMLElement
 				if (textareaElement) {
-					textareaElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${updatedMemories}</div>`
+					textareaElement.dataset.supermemories = `<div>Supermemories of user (only for the reference): ${sanitizeHTML(updatedMemories)}</div>`
 				}
 
 				content
@@ -520,7 +524,7 @@ function setupClaudePromptCapture() {
 			contentEditableDiv &&
 			!promptContent.includes("Supermemories of user")
 		) {
-			contentEditableDiv.innerHTML = `${contentEditableDiv.innerHTML} ${storedMemories}`
+			contentEditableDiv.innerHTML = `${contentEditableDiv.innerHTML} ${sanitizeHTML(storedMemories)}`
 			promptContent =
 				contentEditableDiv.textContent || contentEditableDiv.innerText || ""
 		}

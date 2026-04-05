@@ -10,6 +10,35 @@ import {
 } from "./storage"
 
 /**
+ * Validates that captured tokens match expected formats
+ */
+function validateTokenFormats(tokens: {
+	auth: string
+	csrf: string
+	cookie: string
+}): boolean {
+	// Auth should be a Bearer token
+	if (!tokens.auth.startsWith("Bearer ")) {
+		console.warn("Twitter auth token does not match Bearer format")
+		return false
+	}
+
+	// CSRF token should be a non-empty hex-like string
+	if (!/^[a-f0-9]{32,}$/i.test(tokens.csrf)) {
+		console.warn("Twitter CSRF token does not match expected format")
+		return false
+	}
+
+	// Cookie should contain the ct0 CSRF cookie
+	if (!tokens.cookie.includes("ct0=")) {
+		console.warn("Twitter cookie missing ct0 CSRF cookie")
+		return false
+	}
+
+	return true
+}
+
+/**
  * Captures Twitter authentication tokens from web request headers
  * @param details - Web request details containing headers
  * @returns True if tokens were captured, false otherwise
@@ -49,6 +78,16 @@ export async function captureTwitterTokens(
 	}
 
 	if (authHeader?.value && cookieHeader?.value && csrfHeader?.value) {
+		if (
+			!validateTokenFormats({
+				auth: authHeader.value,
+				csrf: csrfHeader.value,
+				cookie: cookieHeader.value,
+			})
+		) {
+			return false
+		}
+
 		const tokensAlreadyLogged = await getTokensLogged()
 		if (!tokensAlreadyLogged) {
 			console.log("Twitter auth tokens captured successfully")

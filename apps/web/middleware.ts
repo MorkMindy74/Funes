@@ -1,6 +1,20 @@
 import { getSessionCookie } from "better-auth/cookies"
 import { NextResponse } from "next/server"
 
+const ALLOWED_ORIGINS = [
+	"https://app.supermemory.ai",
+	"https://supermemory.ai",
+	process.env.NEXT_PUBLIC_APP_URL,
+].filter(Boolean) as string[]
+
+function isOriginAllowed(origin: string | null): boolean {
+	if (!origin) return false
+	if (ALLOWED_ORIGINS.some((allowed) => origin === allowed)) return true
+	// Allow localhost in development
+	if (origin.startsWith("http://localhost:")) return true
+	return false
+}
+
 export default async function proxy(request: Request) {
 	console.debug("[PROXY] === PROXY START ===")
 	const url = new URL(request.url)
@@ -26,6 +40,31 @@ export default async function proxy(request: Request) {
 				headers: { "Content-Type": "application/json" },
 			})
 		}
+
+		// CSRF protection for mutating requests
+		// Exempt /api/auth/* (better-auth handles its own CSRF) and /api/emails/* (webhooks)
+		const method = request.method.toUpperCase()
+		if (
+			["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
+			!url.pathname.startsWith("/api/auth/") &&
+			!url.pathname.startsWith("/api/emails/")
+		) {
+			const origin = request.headers.get("origin")
+			const referer = request.headers.get("referer")
+			const refererOrigin = referer ? new URL(referer).origin : null
+
+			if (!isOriginAllowed(origin) && !isOriginAllowed(refererOrigin)) {
+				console.debug("[MIDDLEWARE] CSRF check failed for:", url.pathname)
+				return new Response(
+					JSON.stringify({ error: "CSRF validation failed" }),
+					{
+						status: 403,
+						headers: { "Content-Type": "application/json" },
+					},
+				)
+			}
+		}
+
 		console.debug("[MIDDLEWARE] API route with session, allowing access")
 		return NextResponse.next()
 	}
@@ -39,19 +78,6 @@ export default async function proxy(request: Request) {
 		url.searchParams.set("redirect", request.url)
 		return NextResponse.redirect(url)
 	}
-
-	// TEMPORARILY DISABLED: Waitlist check
-	// if (url.pathname !== "/waitlist") {
-	// 	const response = await $fetch("@get/waitlist/status", {
-	// 		headers: {
-	// 			Authorization: `Bearer ${sessionCookie}`,
-	// 		},
-
-	// 	console.debug("[PROXY] Waitlist status:", response.data);
-	// 	if (response.data && !response.data.accessGranted) {
-	// 		return NextResponse.redirect(new URL("/waitlist", request.url));
-	// 	}
-	// }
 
 	console.debug("[PROXY] Passing through to next handler")
 	console.debug("[PROXY] === PROXY END ===")
