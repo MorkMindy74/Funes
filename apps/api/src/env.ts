@@ -36,6 +36,14 @@ export const env = {
 	CHANDRA_URL: process.env.CHANDRA_URL ?? "",
 	GRAPHITI_URL: process.env.GRAPHITI_URL ?? "",
 
+	// Optional: OAuth connections (Google Drive, Notion, OneDrive)
+	GOOGLE_DRIVE_CLIENT_ID: process.env.GOOGLE_DRIVE_CLIENT_ID ?? "",
+	GOOGLE_DRIVE_CLIENT_SECRET: process.env.GOOGLE_DRIVE_CLIENT_SECRET ?? "",
+	NOTION_CLIENT_ID: process.env.NOTION_CLIENT_ID ?? "",
+	NOTION_CLIENT_SECRET: process.env.NOTION_CLIENT_SECRET ?? "",
+	ONEDRIVE_CLIENT_ID: process.env.ONEDRIVE_CLIENT_ID ?? "",
+	ONEDRIVE_CLIENT_SECRET: process.env.ONEDRIVE_CLIENT_SECRET ?? "",
+
 	// Optional monitoring (disabled by default)
 	SENTRY_DSN: process.env.SENTRY_DSN ?? "",
 } as const

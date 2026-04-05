@@ -47,6 +47,106 @@ app.route("/setup", setupRoutes)
 // ─── Better Auth Routes ─────────────────────────────────────────────
 app.on(["POST", "GET"], "/api/auth/**", (c) => auth.handler(c.req.raw))
 
+// ─── OAuth Callback (public — state token validates the request) ─────
+app.get("/v3/connections/callback", async (c) => {
+	const { connectionsRoutes: cr } = await import("./routes/connections.js")
+	// Forward to the callback handler in connections routes
+	const url = new URL(c.req.url)
+	const code = url.searchParams.get("code") || ""
+	const state = url.searchParams.get("state") || ""
+	const error = url.searchParams.get("error") || ""
+	const errorDesc = url.searchParams.get("error_description") || ""
+
+	// Re-create request context for the handler
+	const { validateState } = await import("./services/oauth/common.js")
+	const { resolveCredentials } = await import("./services/oauth/common.js")
+	const { env: envConfig } = await import("./env.js")
+
+	if (error) {
+		return c.redirect(`${envConfig.FRONTEND_URL}/?error=${encodeURIComponent(errorDesc || error)}`)
+	}
+
+	if (!code || !state) {
+		return c.redirect(`${envConfig.FRONTEND_URL}/?error=missing_code_or_state`)
+	}
+
+	const stateData = validateState(state)
+	if (!stateData) {
+		return c.redirect(`${envConfig.FRONTEND_URL}/?error=invalid_state`)
+	}
+
+	const { provider, orgId, userId, redirectUrl, containerTags, codeVerifier } = stateData
+	const creds = await resolveCredentials(provider as any, orgId)
+	if (!creds) {
+		return c.redirect(`${envConfig.FRONTEND_URL}/?error=missing_credentials`)
+	}
+
+	try {
+		let accessToken: string
+		let refreshToken: string | null = null
+		let expiresAt: Date
+		let email = ""
+		let metadata: Record<string, unknown> = {}
+
+		if (provider === "google-drive") {
+			const gdrive = await import("./services/oauth/google-drive.js")
+			const tokens = await gdrive.exchangeCode(creds, code, codeVerifier || "")
+			accessToken = tokens.accessToken
+			refreshToken = tokens.refreshToken
+			expiresAt = tokens.expiresAt
+			const userInfo = await gdrive.getUserInfo(accessToken)
+			email = userInfo.email
+		} else if (provider === "notion") {
+			const notion = await import("./services/oauth/notion.js")
+			const tokens = await notion.exchangeCode(creds, code)
+			accessToken = tokens.accessToken
+			expiresAt = tokens.expiresAt
+			email = tokens.email || ""
+			metadata = { workspaceId: tokens.workspaceId, workspaceName: tokens.workspaceName }
+		} else if (provider === "onedrive") {
+			const od = await import("./services/oauth/onedrive.js")
+			const tokens = await od.exchangeCode(creds, code, codeVerifier || "")
+			accessToken = tokens.accessToken
+			refreshToken = tokens.refreshToken
+			expiresAt = tokens.expiresAt
+			const userInfo = await od.getUserInfo(accessToken)
+			email = userInfo.email
+		} else {
+			return c.redirect(`${envConfig.FRONTEND_URL}/?error=unknown_provider`)
+		}
+
+		const { nanoid } = await import("nanoid")
+		const { db: database } = await import("./db/index.js")
+		const { connections } = await import("./db/schema.js")
+		const connectionId = nanoid()
+
+		await database.insert(connections).values({
+			id: connectionId,
+			provider,
+			orgId,
+			userId,
+			email,
+			accessToken,
+			refreshToken,
+			expiresAt,
+			containerTags: containerTags ?? [],
+			metadata,
+			createdAt: new Date(),
+		})
+
+		logger.info({ provider, orgId, connectionId, email }, "OAuth connection established")
+
+		const successUrl = new URL(redirectUrl || envConfig.FRONTEND_URL)
+		successUrl.searchParams.set("connection", "success")
+		successUrl.searchParams.set("provider", provider)
+		return c.redirect(successUrl.toString())
+	} catch (err) {
+		logger.error({ provider, err }, "OAuth token exchange failed")
+		const errMsg = err instanceof Error ? err.message : "token_exchange_failed"
+		return c.redirect(`${envConfig.FRONTEND_URL}/?error=${encodeURIComponent(errMsg)}`)
+	}
+})
+
 // ─── Protected API Routes (/v3) ─────────────────────────────────────
 const v3 = new Hono()
 v3.use("*", authMiddleware)
