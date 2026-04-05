@@ -13,6 +13,7 @@ import { settingsRoutes } from "./routes/settings.js"
 import { connectionsRoutes } from "./routes/connections.js"
 import { analyticsRoutes } from "./routes/analytics.js"
 import { profileRoutes } from "./routes/profile.js"
+import { chatRoutes } from "./routes/chat.js"
 
 const app = new Hono()
 
@@ -88,6 +89,12 @@ v3.get("/container-tags/list", async (c) => {
 v3.get("/mcp/has-login", (c) => c.json({ previousLogin: true }))
 
 app.route("/v3", v3)
+
+// ─── Chat Routes (top-level, frontend calls /chat directly) ────────
+const chatApp = new Hono()
+chatApp.use("*", authMiddleware)
+chatApp.route("/", chatRoutes)
+app.route("/chat", chatApp)
 
 // ─── Start Workers (if Redis available) ─────────────────────────────
 import { isRedisAvailable } from "./queue/connection.js"

@@ -114,7 +114,7 @@ export function ChatSidebar({
 }) {
 	const isMobile = useIsMobile()
 	const [input, setInput] = useState("")
-	const [selectedModel, setSelectedModel] = useState<ModelId>("gemini-2.5-pro")
+	const [selectedModel, setSelectedModel] = useState<ModelId>("ollama")
 	const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
 	const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null)
 	const [messageFeedback, setMessageFeedback] = useState<
@@ -158,7 +158,7 @@ export function ChatSidebar({
 	const chatTransport = useMemo(
 		() =>
 			new DefaultChatTransport({
-				api: `${process.env.NEXT_PUBLIC_BACKEND_URL ?? "https://api.supermemory.ai"}/chat`,
+				api: `${process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001"}/chat`,
 				credentials: "include",
 				prepareSendMessagesRequest: ({ messages }) => ({
 					body: {

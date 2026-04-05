@@ -1,24 +1,30 @@
 export const models = [
 	{
+		id: "ollama",
+		name: "Ollama (Local)",
+		description: "Self-hosted LLM via Ollama",
+	},
+	{
 		id: "gpt-5",
 		name: "GPT 5",
-		description: "OpenAI's latest model",
+		description: "OpenAI (requires API key)",
 	},
 	{
 		id: "claude-sonnet-4.5",
 		name: "Claude Sonnet 4.5",
-		description: "Anthropic's advanced model",
+		description: "Anthropic (requires API key)",
 	},
 	{
 		id: "gemini-2.5-pro",
 		name: "Gemini 2.5 Pro",
-		description: "Google's most capable model",
+		description: "Google (requires API key)",
 	},
 ] as const
 
 export type ModelId = (typeof models)[number]["id"]
 
 export const modelNames: Record<ModelId, { name: string; version: string }> = {
+	ollama: { name: "Ollama", version: "Local" },
 	"gpt-5": { name: "GPT", version: "5" },
 	"claude-sonnet-4.5": { name: "Claude", version: "4.5" },
 	"gemini-2.5-pro": { name: "Gemini", version: "2.5 Pro" },
