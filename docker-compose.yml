@@ -57,6 +57,8 @@ services:
       # Optional: Ollama for AI-powered memory extraction
       OLLAMA_URL: ${OLLAMA_URL:-}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+      # Optional: Firecrawl for advanced web scraping
+      FIRECRAWL_URL: ${FIRECRAWL_URL:-}
     volumes:
       - api_data:/data
     ports:
@@ -89,6 +91,33 @@ services:
       API_URL: http://api:3001
     ports:
       - "3002:3002"
+
+  # ─── Firecrawl (Optional — advanced web scraping with JS rendering) ─
+  firecrawl:
+    image: ghcr.io/mendableai/firecrawl:latest
+    profiles: ["with-firecrawl"]
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://redis:6379
+      REDIS_RATE_LIMIT_URL: redis://redis:6379
+      PORT: 3003
+      NUM_WORKERS_PER_QUEUE: 2
+      PLAYWRIGHT_MICROSERVICE_URL: http://playwright:3004
+      # Self-hosted mode — no API key required
+      USE_DB_AUTHENTICATION: "false"
+    ports:
+      - "3003:3003"
+
+  # Playwright service for Firecrawl JS rendering
+  playwright:
+    image: ghcr.io/mendableai/firecrawl-playwright:latest
+    profiles: ["with-firecrawl"]
+    restart: unless-stopped
+    ports:
+      - "3004:3004"
 
   # ─── Ollama (Optional — local LLM) ─────────────────────────────────
   ollama:
