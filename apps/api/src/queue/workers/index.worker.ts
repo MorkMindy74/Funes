@@ -1,20 +1,16 @@
 import { Worker } from "bullmq"
 import { eq } from "drizzle-orm"
-import { nanoid } from "nanoid"
 import { redisConnection } from "../connection.js"
 import type { IndexJobData } from "../queues.js"
 import { db } from "../../db/index.js"
 import {
 	documents,
 	chunks,
-	spaces,
-	memoryEntries,
-	memoryDocumentSources,
 	documentsToSpaces,
 } from "../../db/schema.js"
-import { indexChunks, indexMemories } from "../../vector/lancedb.js"
+import { indexChunks } from "../../vector/lancedb.js"
 import { extractMemories } from "../../processing/memory-extractor.js"
-import { generateEmbedding, getEmbeddingModelName } from "../../processing/embeddings.js"
+import { consolidateOrCreate } from "../../processing/memory-manager.js"
 import { logger } from "../../logger.js"
 
 export const indexWorker = new Worker<IndexJobData>(
@@ -65,49 +61,36 @@ export const indexWorker = new Worker<IndexJobData>(
 
 			const spaceId = docSpaces[0]?.spaceId
 
-			// 4. Create memory entries and index them
+			// 4. Create or consolidate memory entries (EverMemOS pattern)
 			if (memories.length > 0 && spaceId) {
-				const modelName = getEmbeddingModelName()
+				let created = 0
+				let consolidated = 0
 
 				for (const mem of memories) {
-					const memId = nanoid()
-					const memEmbedding = await generateEmbedding(mem.memory)
-
-					// Insert memory entry
-					await db.insert(memoryEntries).values({
-						id: memId,
-						memory: mem.memory,
-						spaceId,
-						orgId: doc.orgId,
-						userId: doc.userId,
-						confidence: mem.confidence,
-						memoryLevel: mem.level,
-						isStatic: mem.isStatic,
-						memoryEmbedding: memEmbedding,
-						memoryEmbeddingModel: modelName,
-						metadata: mem.metadata ?? null,
-						createdAt: new Date(),
-						updatedAt: new Date(),
-					})
-
-					// Link memory to document
-					await db.insert(memoryDocumentSources).values({
-						memoryEntryId: memId,
-						documentId,
-						relevanceScore: mem.confidence * 100,
-						addedAt: new Date(),
-					})
-
-					// Index in LanceDB
-					await indexMemories([
-						{
-							id: memId,
-							memory: mem.memory,
+					try {
+						const memId = await consolidateOrCreate(
+							mem,
 							spaceId,
-							embedding: memEmbedding,
-						},
-					])
+							doc.orgId,
+							doc.userId,
+							documentId,
+						)
+						// If the returned ID is a new nanoid (26 chars), it was created
+						// Otherwise it was consolidated with existing
+						if (memId.length === 21) created++
+						else consolidated++
+					} catch (memErr) {
+						logger.warn(
+							{ memory: mem.memory.slice(0, 60), err: memErr },
+							"IndexWorker: failed to store memory, skipping",
+						)
+					}
 				}
+
+				logger.debug(
+					{ documentId, created, consolidated, total: memories.length },
+					"IndexWorker: memories processed (EverMemOS consolidation)",
+				)
 			}
 
 			// 5. Mark document as done

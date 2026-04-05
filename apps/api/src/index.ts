@@ -15,6 +15,7 @@ import { analyticsRoutes } from "./routes/analytics.js"
 import { profileRoutes } from "./routes/profile.js"
 import { chatRoutes } from "./routes/chat.js"
 import { importExportRoutes } from "./routes/import-export.js"
+import { memoriesRoutes } from "./routes/memories.js"
 import { setupRoutes } from "./routes/setup.js"
 
 const app = new Hono()
@@ -55,6 +56,7 @@ v3.route("/projects", projectsRoutes)
 v3.route("/settings", settingsRoutes)
 v3.route("/connections", connectionsRoutes)
 v3.route("/analytics", analyticsRoutes)
+v3.route("/memories", memoriesRoutes)
 
 // v4 routes
 const v4 = new Hono()
@@ -119,6 +121,26 @@ isRedisAvailable().then(async (available) => {
 		const { indexWorker } = await import("./queue/workers/index.worker.js")
 
 		logger.info("Processing pipeline workers started (extract → chunk → embed → index)")
+
+		// Schedule daily memory maintenance (decay, forget expired)
+		const { runMemoryMaintenance } = await import("./processing/memory-manager.js")
+		const MAINTENANCE_INTERVAL = 24 * 60 * 60 * 1000 // 24 hours
+		const maintenanceTimer = setInterval(async () => {
+			try {
+				const result = await runMemoryMaintenance()
+				logger.info(result, "Scheduled memory maintenance complete")
+			} catch (err) {
+				logger.error({ err }, "Scheduled memory maintenance failed")
+			}
+		}, MAINTENANCE_INTERVAL)
+
+		// Run once on startup (after a 30s delay to let DB settle)
+		setTimeout(async () => {
+			try {
+				await runMemoryMaintenance()
+				logger.info("Initial memory maintenance complete")
+			} catch { /* ignore on first run */ }
+		}, 30000)
 
 		// Graceful shutdown
 		const shutdown = async () => {

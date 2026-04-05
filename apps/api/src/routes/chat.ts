@@ -16,7 +16,8 @@ import { chatThreads, chatMessages } from "../db/schema.js"
 import { getSession } from "../middleware/auth.js"
 import { resolveModel, isLLMAvailable, getLLMInfo } from "../llm/provider.js"
 import { generateEmbedding } from "../processing/embeddings.js"
-import { searchChunks, searchMemories } from "../vector/lancedb.js"
+import { searchChunks } from "../vector/lancedb.js"
+import { retrieveMemoriesForRAG } from "../processing/memory-manager.js"
 import { logger } from "../logger.js"
 
 export const chatRoutes = new Hono()
@@ -31,31 +32,40 @@ async function buildRAGContext(
 		// Generate embedding for the query
 		const embedding = await generateEmbedding(query)
 
-		// Search both chunks and memories
+		// Search both chunks and memories (confidence-weighted for memories)
 		const [chunkResults, memoryResults] = await Promise.all([
-			searchChunks(embedding, 5).catch(() => []),
-			searchMemories(embedding, 5).catch(() => []),
+			searchChunks(embedding, { limit: 5 }).catch(() => []),
+			retrieveMemoriesForRAG(embedding, { limit: 8, minSimilarity: 0.25 }).catch(() => []),
 		])
 
 		const contextParts: string[] = []
 
-		// Add relevant memories
+		// Add relevant memories — grouped by level for clarity
 		if (memoryResults.length > 0) {
-			contextParts.push("## Relevant Memories")
-			for (const m of memoryResults) {
-				if (m.similarity >= 0.3) {
-					contextParts.push(`- ${m.memory} (relevance: ${Math.round(m.similarity * 100)}%)`)
+			const coreMems = memoryResults.filter((m) => m.level === "core" || m.level === "profile")
+			const otherMems = memoryResults.filter((m) => m.level !== "core" && m.level !== "profile")
+
+			if (coreMems.length > 0) {
+				contextParts.push("## Core Knowledge")
+				for (const m of coreMems) {
+					contextParts.push(`- ${m.memory} [${m.level}, confidence: ${Math.round(m.confidence * 100)}%]`)
+				}
+			}
+
+			if (otherMems.length > 0) {
+				contextParts.push("\n## Related Memories")
+				for (const m of otherMems) {
+					contextParts.push(`- ${m.memory} (relevance: ${Math.round(m.score * 100)}%)`)
 				}
 			}
 		}
 
 		// Add relevant document chunks
-		if (chunkResults.length > 0) {
+		const relevantChunks = chunkResults.filter((c) => c.score >= 0.3)
+		if (relevantChunks.length > 0) {
 			contextParts.push("\n## Relevant Documents")
-			for (const c of chunkResults) {
-				if (c.similarity >= 0.3) {
-					contextParts.push(`---\n${c.content}\n(relevance: ${Math.round(c.similarity * 100)}%)`)
-				}
+			for (const c of relevantChunks) {
+				contextParts.push(`---\n${c.content}\n(relevance: ${Math.round(c.score * 100)}%)`)
 			}
 		}
 
@@ -66,7 +76,8 @@ async function buildRAGContext(
 		return (
 			"\n\n<user_context>\n" +
 			"The following information comes from the user's personal memory bank. " +
-			"Use it to provide personalized, contextual answers.\n\n" +
+			"Core knowledge and profile traits are the most reliable. " +
+			"Use this to provide personalized, contextual answers.\n\n" +
 			contextParts.join("\n") +
 			"\n</user_context>"
 		)
