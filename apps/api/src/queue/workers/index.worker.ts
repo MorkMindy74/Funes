@@ -11,6 +11,8 @@ import {
 import { indexChunks } from "../../vector/lancedb.js"
 import { extractMemories } from "../../processing/memory-extractor.js"
 import { consolidateOrCreate } from "../../processing/memory-manager.js"
+import { extractGraph } from "../../processing/entity-extractor.js"
+import { ingestGraph } from "../../processing/graph-manager.js"
 import { logger } from "../../logger.js"
 
 export const indexWorker = new Worker<IndexJobData>(
@@ -93,7 +95,34 @@ export const indexWorker = new Worker<IndexJobData>(
 				)
 			}
 
-			// 5. Mark document as done
+			// 5. Extract knowledge graph entities & relationships
+			try {
+				const graphData = await extractGraph(doc.content ?? "", {
+					title: doc.title ?? undefined,
+				})
+
+				if (graphData.entities.length > 0) {
+					const graphResult = await ingestGraph(
+						graphData.entities,
+						graphData.relationships,
+						doc.orgId,
+						{
+							spaceId: spaceId ?? undefined,
+							sourceDocumentId: documentId,
+						},
+					)
+
+					logger.debug(
+						{ documentId, nodes: graphResult.nodes, edges: graphResult.edges },
+						"IndexWorker: knowledge graph updated",
+					)
+				}
+			} catch (graphErr) {
+				// Non-critical — don't fail the document if graph extraction fails
+				logger.warn({ documentId, err: graphErr }, "IndexWorker: graph extraction failed, skipping")
+			}
+
+			// 6. Mark document as done
 			await db
 				.update(documents)
 				.set({

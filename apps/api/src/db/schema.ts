@@ -311,7 +311,76 @@ export const apiRequests = pgTable(
 	],
 )
 
-// ─── Chat Threads ──────────────────────────────────────────��────────
+// ─── Knowledge Graph (M7.5) ───────────────────────────────────────
+export const graphNodes = pgTable(
+	"graph_nodes",
+	{
+		id: varchar("id", { length: 36 }).primaryKey(),
+		name: text("name").notNull(),
+		type: varchar("type", { length: 50 }).notNull(), // person, org, location, concept, event, tool
+		orgId: varchar("org_id", { length: 36 }).notNull(),
+		spaceId: varchar("space_id", { length: 36 }).references(() => spaces.id, { onDelete: "set null" }),
+
+		// Optional embedding for vector search over entities
+		embedding: jsonb("embedding").$type<number[]>(),
+		embeddingModel: varchar("embedding_model", { length: 100 }),
+
+		// Properties bag — type-specific attributes
+		properties: jsonb("properties").$type<Record<string, unknown>>().default({}),
+
+		// Provenance
+		sourceMemoryId: varchar("source_memory_id", { length: 36 }),
+		sourceDocumentId: varchar("source_document_id", { length: 36 }),
+		confidence: real("confidence").default(1.0),
+		mentionCount: integer("mention_count").notNull().default(1),
+
+		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+	},
+	(table) => [
+		index("graph_nodes_org_id_idx").on(table.orgId),
+		index("graph_nodes_type_idx").on(table.type),
+		index("graph_nodes_name_idx").on(table.name),
+		uniqueIndex("graph_nodes_name_type_org_idx").on(table.name, table.type, table.orgId),
+	],
+)
+
+export const graphEdges = pgTable(
+	"graph_edges",
+	{
+		id: varchar("id", { length: 36 }).primaryKey(),
+		sourceId: varchar("source_id", { length: 36 })
+			.notNull()
+			.references(() => graphNodes.id, { onDelete: "cascade" }),
+		targetId: varchar("target_id", { length: 36 })
+			.notNull()
+			.references(() => graphNodes.id, { onDelete: "cascade" }),
+		relation: varchar("relation", { length: 100 }).notNull(), // works_at, lives_in, knows, created, etc.
+		orgId: varchar("org_id", { length: 36 }).notNull(),
+
+		// Scoring
+		confidence: real("confidence").default(1.0),
+		weight: real("weight").default(1.0),
+
+		// Provenance
+		sourceMemoryId: varchar("source_memory_id", { length: 36 }),
+		sourceDocumentId: varchar("source_document_id", { length: 36 }),
+
+		properties: jsonb("properties").$type<Record<string, unknown>>().default({}),
+
+		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+	},
+	(table) => [
+		index("graph_edges_source_idx").on(table.sourceId),
+		index("graph_edges_target_idx").on(table.targetId),
+		index("graph_edges_relation_idx").on(table.relation),
+		index("graph_edges_org_id_idx").on(table.orgId),
+		uniqueIndex("graph_edges_unique_idx").on(table.sourceId, table.targetId, table.relation),
+	],
+)
+
+// ─── Chat Threads ──────────────────────────────────────────────────
 export const chatThreads = pgTable(
 	"chat_threads",
 	{
@@ -390,5 +459,24 @@ export const memoryDocumentSourcesRelations = relations(memoryDocumentSources, (
 	document: one(documents, {
 		fields: [memoryDocumentSources.documentId],
 		references: [documents.id],
+	}),
+}))
+
+export const graphNodesRelations = relations(graphNodes, ({ many, one }) => ({
+	outgoingEdges: many(graphEdges, { relationName: "sourceEdges" }),
+	incomingEdges: many(graphEdges, { relationName: "targetEdges" }),
+	space: one(spaces, { fields: [graphNodes.spaceId], references: [spaces.id] }),
+}))
+
+export const graphEdgesRelations = relations(graphEdges, ({ one }) => ({
+	source: one(graphNodes, {
+		fields: [graphEdges.sourceId],
+		references: [graphNodes.id],
+		relationName: "sourceEdges",
+	}),
+	target: one(graphNodes, {
+		fields: [graphEdges.targetId],
+		references: [graphNodes.id],
+		relationName: "targetEdges",
 	}),
 }))

@@ -1,0 +1,213 @@
+/**
+ * Entity & Relationship Extractor — extracts graph data from text.
+ *
+ * Uses Ollama (LLM) when available, falls back to NLP (compromise.js).
+ * Returns entities (nodes) and relationships (edges) for the knowledge graph.
+ */
+
+import { env } from "../env.js"
+import { logger } from "../logger.js"
+
+export interface ExtractedEntity {
+	name: string
+	type: "person" | "organization" | "location" | "concept" | "event" | "tool"
+	properties?: Record<string, unknown>
+	confidence: number
+}
+
+export interface ExtractedRelationship {
+	source: string // entity name
+	target: string // entity name
+	relation: string // e.g. "works_at", "lives_in", "created", "uses"
+	confidence: number
+	properties?: Record<string, unknown>
+}
+
+export interface GraphExtractionResult {
+	entities: ExtractedEntity[]
+	relationships: ExtractedRelationship[]
+}
+
+/**
+ * Extract entities and relationships from text content.
+ */
+export async function extractGraph(
+	content: string,
+	options?: { title?: string },
+): Promise<GraphExtractionResult> {
+	if (!content || content.trim().length < 30) {
+		return { entities: [], relationships: [] }
+	}
+
+	if (env.OLLAMA_URL) {
+		try {
+			return await extractWithOllama(content, options)
+		} catch (err) {
+			logger.warn({ err }, "Graph extraction via Ollama failed, falling back to NLP")
+		}
+	}
+
+	return extractWithNLP(content, options)
+}
+
+// ─── LLM-based extraction ─────────────────────────────────────────
+
+async function extractWithOllama(
+	content: string,
+	options?: { title?: string },
+): Promise<GraphExtractionResult> {
+	const prompt = `Extract entities and relationships from the following text. Return a JSON object with:
+
+{
+  "entities": [
+    { "name": "Entity Name", "type": "person|organization|location|concept|event|tool", "confidence": 0.0-1.0 }
+  ],
+  "relationships": [
+    { "source": "Entity A", "target": "Entity B", "relation": "works_at|lives_in|created|uses|knows|manages|part_of|related_to", "confidence": 0.0-1.0 }
+  ]
+}
+
+Rules:
+- Normalize entity names (capitalize properly, no duplicates)
+- Use specific relation types when possible
+- Only extract clearly stated facts, not speculation
+- Confidence reflects how explicitly the relationship is stated
+- Maximum 20 entities and 20 relationships
+
+Title: ${options?.title ?? "Unknown"}
+
+Content (truncated):
+${content.slice(0, 4000)}
+
+Return ONLY valid JSON, no markdown, no explanation.`
+
+	const response = await fetch(`${env.OLLAMA_URL}/api/generate`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			model: env.OLLAMA_MODEL,
+			prompt,
+			stream: false,
+			format: "json",
+			options: { temperature: 0.1 },
+		}),
+		signal: AbortSignal.timeout(60000),
+	})
+
+	if (!response.ok) throw new Error(`Ollama returned ${response.status}`)
+
+	const data = (await response.json()) as { response: string }
+	const parsed = JSON.parse(data.response)
+
+	const entities: ExtractedEntity[] = (parsed.entities ?? [])
+		.slice(0, 20)
+		.map((e: any) => ({
+			name: normalizeEntityName(String(e.name ?? "")),
+			type: validateEntityType(e.type),
+			confidence: typeof e.confidence === "number" ? Math.min(1, Math.max(0, e.confidence)) : 0.7,
+			properties: e.properties,
+		}))
+		.filter((e: ExtractedEntity) => e.name.length > 1)
+
+	const entityNames = new Set(entities.map((e) => e.name.toLowerCase()))
+
+	const relationships: ExtractedRelationship[] = (parsed.relationships ?? [])
+		.slice(0, 20)
+		.map((r: any) => ({
+			source: normalizeEntityName(String(r.source ?? "")),
+			target: normalizeEntityName(String(r.target ?? "")),
+			relation: normalizeRelation(String(r.relation ?? "related_to")),
+			confidence: typeof r.confidence === "number" ? Math.min(1, Math.max(0, r.confidence)) : 0.6,
+			properties: r.properties,
+		}))
+		.filter(
+			(r: ExtractedRelationship) =>
+				r.source.length > 1 &&
+				r.target.length > 1 &&
+				r.source !== r.target &&
+				// Ensure both endpoints exist as entities
+				entityNames.has(r.source.toLowerCase()) &&
+				entityNames.has(r.target.toLowerCase()),
+		)
+
+	logger.debug(
+		{ entities: entities.length, relationships: relationships.length },
+		"Graph extracted via Ollama",
+	)
+
+	return { entities, relationships }
+}
+
+// ─── NLP-based extraction (fallback) ──────────────────────────────
+
+async function extractWithNLP(
+	content: string,
+	_options?: { title?: string },
+): Promise<GraphExtractionResult> {
+	const nlp = (await import("compromise")).default
+	const doc = nlp(content)
+
+	const entities: ExtractedEntity[] = []
+	const seen = new Set<string>()
+
+	// Extract people
+	const people = (doc as any).people?.().out("array") as string[] | undefined
+	for (const p of (people ?? []).slice(0, 10)) {
+		const name = normalizeEntityName(p)
+		if (name.length > 1 && !seen.has(name.toLowerCase())) {
+			seen.add(name.toLowerCase())
+			entities.push({ name, type: "person", confidence: 0.7 })
+		}
+	}
+
+	// Extract places
+	const places = (doc as any).places?.().out("array") as string[] | undefined
+	for (const p of (places ?? []).slice(0, 10)) {
+		const name = normalizeEntityName(p)
+		if (name.length > 1 && !seen.has(name.toLowerCase())) {
+			seen.add(name.toLowerCase())
+			entities.push({ name, type: "location", confidence: 0.6 })
+		}
+	}
+
+	// Extract organizations
+	const orgs = (doc as any).organizations?.().out("array") as string[] | undefined
+	for (const o of (orgs ?? []).slice(0, 10)) {
+		const name = normalizeEntityName(o)
+		if (name.length > 1 && !seen.has(name.toLowerCase())) {
+			seen.add(name.toLowerCase())
+			entities.push({ name, type: "organization", confidence: 0.6 })
+		}
+	}
+
+	// NLP can't reliably extract relationships — return entities only
+	return { entities, relationships: [] }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────
+
+function normalizeEntityName(name: string): string {
+	return name
+		.trim()
+		.replace(/\s+/g, " ")
+		// Title case
+		.replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+const VALID_ENTITY_TYPES = new Set([
+	"person", "organization", "location", "concept", "event", "tool",
+])
+
+function validateEntityType(type: string): ExtractedEntity["type"] {
+	const normalized = String(type ?? "concept").toLowerCase()
+	return VALID_ENTITY_TYPES.has(normalized) ? (normalized as ExtractedEntity["type"]) : "concept"
+}
+
+function normalizeRelation(relation: string): string {
+	return relation
+		.toLowerCase()
+		.trim()
+		.replace(/\s+/g, "_")
+		.replace(/[^a-z0-9_]/g, "")
+		|| "related_to"
+}

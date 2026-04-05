@@ -16,6 +16,7 @@ import { profileRoutes } from "./routes/profile.js"
 import { chatRoutes } from "./routes/chat.js"
 import { importExportRoutes } from "./routes/import-export.js"
 import { memoriesRoutes } from "./routes/memories.js"
+import { graphRoutes } from "./routes/graph.js"
 import { setupRoutes } from "./routes/setup.js"
 
 const app = new Hono()
@@ -57,6 +58,7 @@ v3.route("/settings", settingsRoutes)
 v3.route("/connections", connectionsRoutes)
 v3.route("/analytics", analyticsRoutes)
 v3.route("/memories", memoriesRoutes)
+v3.route("/graph", graphRoutes)
 
 // v4 routes
 const v4 = new Hono()

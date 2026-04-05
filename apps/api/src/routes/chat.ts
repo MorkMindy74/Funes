@@ -18,6 +18,7 @@ import { resolveModel, isLLMAvailable, getLLMInfo } from "../llm/provider.js"
 import { generateEmbedding } from "../processing/embeddings.js"
 import { searchChunks } from "../vector/lancedb.js"
 import { retrieveMemoriesForRAG } from "../processing/memory-manager.js"
+import { getGraphContextForRAG } from "../processing/graph-manager.js"
 import { logger } from "../logger.js"
 
 export const chatRoutes = new Hono()
@@ -32,10 +33,11 @@ async function buildRAGContext(
 		// Generate embedding for the query
 		const embedding = await generateEmbedding(query)
 
-		// Search both chunks and memories (confidence-weighted for memories)
-		const [chunkResults, memoryResults] = await Promise.all([
+		// Search chunks, memories, and graph in parallel
+		const [chunkResults, memoryResults, graphContext] = await Promise.all([
 			searchChunks(embedding, { limit: 5 }).catch(() => []),
 			retrieveMemoriesForRAG(embedding, { limit: 8, minSimilarity: 0.25 }).catch(() => []),
+			getGraphContextForRAG(query, orgId, { maxDepth: 2, maxNodes: 10 }).catch(() => ""),
 		])
 
 		const contextParts: string[] = []
@@ -69,6 +71,11 @@ async function buildRAGContext(
 			}
 		}
 
+		// Add graph relationships
+		if (graphContext) {
+			contextParts.push(`\n${graphContext}`)
+		}
+
 		if (contextParts.length === 0) {
 			return ""
 		}
@@ -77,6 +84,7 @@ async function buildRAGContext(
 			"\n\n<user_context>\n" +
 			"The following information comes from the user's personal memory bank. " +
 			"Core knowledge and profile traits are the most reliable. " +
+			"Knowledge graph shows entity relationships. " +
 			"Use this to provide personalized, contextual answers.\n\n" +
 			contextParts.join("\n") +
 			"\n</user_context>"
