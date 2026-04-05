@@ -15,6 +15,7 @@ import { analyticsRoutes } from "./routes/analytics.js"
 import { profileRoutes } from "./routes/profile.js"
 import { chatRoutes } from "./routes/chat.js"
 import { importExportRoutes } from "./routes/import-export.js"
+import { setupRoutes } from "./routes/setup.js"
 
 const app = new Hono()
 
@@ -37,6 +38,9 @@ if (env.NODE_ENV === "development") {
 app.get("/health", (c) =>
 	c.json({ status: "ok", version: "0.1.0", timestamp: new Date().toISOString() }),
 )
+
+// ─── Setup Routes (public, no auth) ─────────────────────────────────
+app.route("/setup", setupRoutes)
 
 // ─── Better Auth Routes ─────────────────────────────────────────────
 app.on(["POST", "GET"], "/api/auth/**", (c) => auth.handler(c.req.raw))

@@ -2,8 +2,6 @@ import { getSessionCookie } from "better-auth/cookies"
 import { NextResponse } from "next/server"
 
 const ALLOWED_ORIGINS = [
-	"https://app.supermemory.ai",
-	"https://supermemory.ai",
 	process.env.NEXT_PUBLIC_APP_URL,
 ].filter(Boolean) as string[]
 
@@ -25,8 +23,8 @@ export default async function proxy(request: Request) {
 	const sessionCookie = getSessionCookie(request)
 	console.debug("[PROXY] Session cookie exists:", !!sessionCookie)
 
-	// Always allow access to login and waitlist pages
-	const publicPaths = ["/login", "/login/new"]
+	// Always allow access to login, setup, and waitlist pages
+	const publicPaths = ["/login", "/login/new", "/setup"]
 	if (publicPaths.includes(url.pathname)) {
 		console.debug("[PROXY] Public path, allowing access")
 		return NextResponse.next()
@@ -82,16 +80,11 @@ export default async function proxy(request: Request) {
 	console.debug("[PROXY] Passing through to next handler")
 	console.debug("[PROXY] === PROXY END ===")
 	const response = NextResponse.next()
-	response.cookies.set({
-		name: "last-site-visited",
-		value: "https://app.supermemory.ai",
-		domain: "supermemory.ai",
-	})
 	return response
 }
 
 export const config = {
 	matcher: [
-		"/((?!_next/static|_next/image|images|icon.png|monitoring|opengraph-image.png|bg-rectangle.png|onboarding|ingest|login|api/emails).*)",
+		"/((?!_next/static|_next/image|images|icon.png|monitoring|opengraph-image.png|bg-rectangle.png|onboarding|ingest|login|setup|api/emails).*)",
 	],
 }

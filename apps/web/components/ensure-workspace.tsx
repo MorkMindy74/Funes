@@ -12,9 +12,24 @@ export function EnsureWorkspace({ children }: { children: React.ReactNode }) {
 	useEffect(() => {
 		if (isRestoring) return
 		if (!session) {
-			router.replace(
-				`/login?redirect=${encodeURIComponent(window.location.href)}`,
-			)
+			// Check if this is a fresh install (no users yet) → redirect to setup
+			const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"
+			fetch(`${backendUrl}/setup/status`)
+				.then((r) => r.json())
+				.then((data: { initialized?: boolean }) => {
+					if (!data.initialized) {
+						router.replace("/setup")
+					} else {
+						router.replace(
+							`/login?redirect=${encodeURIComponent(window.location.href)}`,
+						)
+					}
+				})
+				.catch(() => {
+					router.replace(
+						`/login?redirect=${encodeURIComponent(window.location.href)}`,
+					)
+				})
 			return
 		}
 		if (organizations === null) return
