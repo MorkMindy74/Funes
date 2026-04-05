@@ -350,6 +350,83 @@ export class SupermemoryMCP extends McpAgent<Env, unknown, Props> {
 			},
 		)
 
+		// Document conversion tool powered by MarkItDown
+		this.server.registerTool(
+			"convert-document",
+			{
+				description:
+					"Convert a document URL to Markdown. Supports HTML, PDF, DOCX, XLSX, PPTX, EPUB, CSV, Jupyter notebooks, RSS feeds, and 10+ formats. Use this to extract readable content from any document URL.",
+				inputSchema: z.object({
+					url: z
+						.string()
+						.url()
+						.describe(
+							"URL of the document to convert to Markdown (http:// or https://)",
+						),
+				}),
+			},
+			async (args: { url: string }) => {
+				try {
+					const apiUrl =
+						this.env.API_URL || "https://app.supermemory.ai"
+					const response = await fetch(`${apiUrl}/api/convert`, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: `Bearer ${this.props?.apiKey || ""}`,
+						},
+						body: JSON.stringify({ url: args.url }),
+					})
+
+					if (!response.ok) {
+						const errorData = await response
+							.json()
+							.catch(() => ({ error: "Unknown error" }))
+						return {
+							content: [
+								{
+									type: "text" as const,
+									text: `Error converting document: ${(errorData as { error?: string }).error || response.statusText}`,
+								},
+							],
+							isError: true,
+						}
+					}
+
+					const data = (await response.json()) as {
+						markdown: string
+						title?: string
+						sourceType?: string
+					}
+					const header = data.title
+						? `# ${data.title}\n\n`
+						: ""
+					return {
+						content: [
+							{
+								type: "text" as const,
+								text: `${header}${data.markdown}`,
+							},
+						],
+					}
+				} catch (error) {
+					const message =
+						error instanceof Error
+							? error.message
+							: "An unexpected error occurred"
+					return {
+						content: [
+							{
+								type: "text" as const,
+								text: `Error converting document: ${message}`,
+							},
+						],
+						isError: true,
+					}
+				}
+			},
+		)
+
 		// App-only tool for the UI to fetch additional documents (pagination)
 		registerAppTool(
 			this.server,

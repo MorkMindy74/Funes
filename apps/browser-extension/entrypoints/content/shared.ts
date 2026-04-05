@@ -1,7 +1,7 @@
 import { MESSAGE_TYPES } from "../../utils/constants"
 import { bearerToken, userData } from "../../utils/storage"
 import { DOMUtils } from "../../utils/ui-components"
-import { default as TurndownService } from "turndown"
+import { htmlToMarkdown } from "../../utils/html-to-markdown"
 
 export async function saveMemory() {
 	try {
@@ -58,9 +58,8 @@ export async function saveMemory() {
 			}
 			const html = bodyClone.innerHTML
 
-			// Convert HTML to markdown
-			const turndownService = new TurndownService()
-			const markdown = turndownService.turndown(html)
+			// Convert HTML to markdown (GFM-enhanced: tables, strikethrough, task lists)
+			const markdown = htmlToMarkdown(html)
 			data.markdown = markdown
 		}
 

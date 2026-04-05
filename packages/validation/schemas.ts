@@ -20,6 +20,14 @@ export const DocumentTypeEnum = z.enum([
 	"notion_doc",
 	"webpage",
 	"onedrive",
+	// MarkItDown-supported formats
+	"docx",
+	"xlsx",
+	"pptx",
+	"epub",
+	"csv",
+	"jupyter",
+	"rss",
 ])
 export type DocumentType = z.infer<typeof DocumentTypeEnum>
 
