@@ -12,6 +12,7 @@ import { projectsRoutes } from "./routes/projects.js"
 import { settingsRoutes } from "./routes/settings.js"
 import { connectionsRoutes } from "./routes/connections.js"
 import { analyticsRoutes } from "./routes/analytics.js"
+import { profileRoutes } from "./routes/profile.js"
 
 const app = new Hono()
 
@@ -48,6 +49,12 @@ v3.route("/projects", projectsRoutes)
 v3.route("/settings", settingsRoutes)
 v3.route("/connections", connectionsRoutes)
 v3.route("/analytics", analyticsRoutes)
+
+// v4 routes
+const v4 = new Hono()
+v4.use("*", authMiddleware)
+v4.route("/profile", profileRoutes)
+app.route("/v4", v4)
 
 // Container tags
 v3.get("/container-tags/list", async (c) => {
