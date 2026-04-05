@@ -82,6 +82,36 @@ v3.get("/mcp/has-login", (c) => c.json({ previousLogin: true }))
 
 app.route("/v3", v3)
 
+// ─── Start Workers (if Redis available) ─────────────────────────────
+import { isRedisAvailable } from "./queue/connection.js"
+
+isRedisAvailable().then(async (available) => {
+	if (available) {
+		// Dynamic imports to avoid errors when Redis is down
+		const { extractWorker } = await import("./queue/workers/extract.worker.js")
+		const { chunkWorker } = await import("./queue/workers/chunk.worker.js")
+		const { embedWorker } = await import("./queue/workers/embed.worker.js")
+		const { indexWorker } = await import("./queue/workers/index.worker.js")
+
+		logger.info("Processing pipeline workers started (extract → chunk → embed → index)")
+
+		// Graceful shutdown
+		const shutdown = async () => {
+			logger.info("Shutting down workers...")
+			await Promise.all([
+				extractWorker.close(),
+				chunkWorker.close(),
+				embedWorker.close(),
+				indexWorker.close(),
+			])
+		}
+		process.on("SIGTERM", shutdown)
+		process.on("SIGINT", shutdown)
+	} else {
+		logger.warn("Redis not available — processing pipeline disabled. Documents will stay in 'queued' status.")
+	}
+})
+
 // ─── Start Server ───────────────────────────────────────────────────
 logger.info(`Starting Funes API on port ${env.PORT}...`)
 

@@ -11,6 +11,7 @@ import {
 	memoryDocumentSources,
 } from "../db/schema.js"
 import { getSession } from "../middleware/auth.js"
+import { extractQueue } from "../queue/queues.js"
 import { logger } from "../logger.js"
 
 export const documentsRoutes = new Hono()
@@ -78,10 +79,14 @@ documentsRoutes.post("/", async (c) => {
 		}
 	}
 
-	// TODO (M2): Enqueue processing pipeline
-	// await extractQueue.add("extract", { documentId: id })
-
-	logger.info({ documentId: id }, "Document created, queued for processing")
+	// Enqueue processing pipeline
+	try {
+		await extractQueue.add("extract", { documentId: id })
+		logger.info({ documentId: id }, "Document created, enqueued for processing")
+	} catch {
+		// Redis may not be available — document stays in "queued" status
+		logger.warn({ documentId: id }, "Redis unavailable, document saved but not enqueued")
+	}
 
 	return c.json({ id: doc.id, status: doc.status }, 201)
 })
