@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
 		"@tiptap/suggestion",
 		"@tiptap/markdown",
 	],
+	output: "standalone",
 	experimental: {
 		viewTransition: true,
 	},

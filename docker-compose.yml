@@ -1,0 +1,107 @@
+version: "3.8"
+
+services:
+  # ─── PostgreSQL ─────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: funes
+      POSTGRES_USER: funes
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-funes_dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U funes"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ──────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Funes API (Backend) ────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgres://funes:${DB_PASSWORD:-funes_dev}@postgres:5432/funes
+      REDIS_URL: redis://redis:6379
+      BETTER_AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production}
+      BETTER_AUTH_URL: http://api:3001
+      FRONTEND_URL: http://localhost:3000
+      LANCEDB_DIR: /data/lancedb
+      UPLOADS_DIR: /data/uploads
+      # Optional: Ollama for AI-powered memory extraction
+      OLLAMA_URL: ${OLLAMA_URL:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+    volumes:
+      - api_data:/data
+    ports:
+      - "3001:3001"
+
+  # ─── Funes Web (Frontend) ───────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:3001
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+
+  # ─── Funes MCP Server ──────────────────────────────────────────────
+  mcp:
+    build:
+      context: .
+      dockerfile: apps/mcp/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      PORT: 3002
+      API_URL: http://api:3001
+    ports:
+      - "3002:3002"
+
+  # ─── Ollama (Optional — local LLM) ─────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["with-ollama"]
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+
+volumes:
+  postgres_data:
+  redis_data:
+  api_data:
+  ollama_data:
