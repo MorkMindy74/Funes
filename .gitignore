@@ -17,6 +17,9 @@ node_modules
 
 # Testing
 coverage
+test_output.txt
+*.test-output
+test-results/
 
 # Turbo
 .turbo

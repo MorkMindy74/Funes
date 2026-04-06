@@ -181,7 +181,10 @@ export class LeannBackend implements VectorBackend {
 				},
 			)
 			if (!resp.ok) {
-				logger.warn({ documentId, status: resp.status }, "LEANN deleteDocumentChunks failed")
+				logger.warn(
+					{ documentId, status: resp.status },
+					"LEANN deleteDocumentChunks failed",
+				)
 			}
 		} catch {
 			// Non-critical — log and continue

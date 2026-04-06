@@ -92,24 +92,30 @@ describe("isNonHtmlUrl", () => {
 describe("extractMetaTag", () => {
 	it("extracts OG title", () => {
 		const html = '<meta property="og:title" content="Test Title">'
-		const patterns = [/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i]
+		const patterns = [
+			/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i,
+		]
 		expect(extractMetaTag(html, patterns)).toBe("Test Title")
 	})
 
 	it("decodes HTML entities", () => {
 		const html = '<meta property="og:title" content="Test &amp; Title">'
-		const patterns = [/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i]
+		const patterns = [
+			/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i,
+		]
 		expect(extractMetaTag(html, patterns)).toBe("Test & Title")
 	})
 
 	it("returns empty string when no match", () => {
 		const html = "<html><body>No meta tags</body></html>"
-		const patterns = [/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i]
+		const patterns = [
+			/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i,
+		]
 		expect(extractMetaTag(html, patterns)).toBe("")
 	})
 
 	it("tries multiple patterns in order", () => {
-		const html = '<title>Fallback Title</title>'
+		const html = "<title>Fallback Title</title>"
 		const patterns = [
 			/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i,
 			/<title>([^<]+)<\/title>/i,
@@ -120,13 +126,15 @@ describe("extractMetaTag", () => {
 
 describe("resolveImageUrl", () => {
 	it("returns absolute URLs unchanged", () => {
-		expect(resolveImageUrl("https://example.com/image.jpg", "https://base.com"))
-			.toBe("https://example.com/image.jpg")
+		expect(
+			resolveImageUrl("https://example.com/image.jpg", "https://base.com"),
+		).toBe("https://example.com/image.jpg")
 	})
 
 	it("resolves relative URLs against base", () => {
-		expect(resolveImageUrl("/image.jpg", "https://example.com/page"))
-			.toBe("https://example.com/image.jpg")
+		expect(resolveImageUrl("/image.jpg", "https://example.com/page")).toBe(
+			"https://example.com/image.jpg",
+		)
 	})
 
 	it("returns undefined for undefined input", () => {
@@ -140,11 +148,15 @@ describe("resolveImageUrl", () => {
 
 describe("extractImageUrl", () => {
 	it("returns string directly", () => {
-		expect(extractImageUrl("https://example.com/img.jpg")).toBe("https://example.com/img.jpg")
+		expect(extractImageUrl("https://example.com/img.jpg")).toBe(
+			"https://example.com/img.jpg",
+		)
 	})
 
 	it("extracts URL from array of objects", () => {
-		expect(extractImageUrl([{ url: "https://example.com/img.jpg" }])).toBe("https://example.com/img.jpg")
+		expect(extractImageUrl([{ url: "https://example.com/img.jpg" }])).toBe(
+			"https://example.com/img.jpg",
+		)
 	})
 
 	it("returns undefined for null/undefined", () => {

@@ -9,7 +9,7 @@
  * into the system prompt for continuity.
  */
 
-import { eq, asc, desc, gt } from "drizzle-orm"
+import { eq, asc, desc } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { db } from "../db/index.js"
 import { chatMessages, conversationSummaries } from "../db/schema.js"
@@ -57,9 +57,7 @@ export async function getConversationContext(
 			const msgs = await db
 				.select({ role: chatMessages.role, content: chatMessages.content })
 				.from(chatMessages)
-				.where(
-					eq(chatMessages.threadId, threadId),
-				)
+				.where(eq(chatMessages.threadId, threadId))
 				.orderBy(asc(chatMessages.createdAt))
 
 			// Filter to messages after the last summarized one
@@ -115,7 +113,10 @@ export async function summarizeConversation(
 
 		const alreadyCovered = existing?.messageRange?.messageCount ?? 0
 		// Only re-summarize if we have enough new messages beyond the last summary
-		if (alreadyCovered > 0 && messages.length - alreadyCovered < Math.floor(threshold / 2)) {
+		if (
+			alreadyCovered > 0 &&
+			messages.length - alreadyCovered < Math.floor(threshold / 2)
+		) {
 			return
 		}
 
@@ -152,7 +153,12 @@ export async function summarizeConversation(
 		})
 
 		logger.info(
-			{ threadId, mode: effectiveMode, summarized: coveredCount, total: messages.length },
+			{
+				threadId,
+				mode: effectiveMode,
+				summarized: coveredCount,
+				total: messages.length,
+			},
 			"Conversation summarized",
 		)
 	} catch (err) {
@@ -198,7 +204,10 @@ async function generateSummary(
 				}
 			}
 		} catch (err) {
-			logger.warn({ err }, "Ollama summarization failed — using extractive fallback")
+			logger.warn(
+				{ err },
+				"Ollama summarization failed — using extractive fallback",
+			)
 		}
 	}
 

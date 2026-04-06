@@ -5,7 +5,8 @@
 import type { OAuthCredentials, StateData } from "./common.js"
 import { generatePKCE, generateState, exchangeToken } from "./common.js"
 
-const AUTH_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+const AUTH_URL =
+	"https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
 const TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
 const USERINFO_URL = "https://graph.microsoft.com/v1.0/me"
 const SCOPES = "Files.Read.All User.Read offline_access"

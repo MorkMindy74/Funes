@@ -25,7 +25,9 @@ export class LLMReranker implements Reranker {
 	): Promise<RerankOutput[]> {
 		if (!env.OLLAMA_URL) {
 			logger.warn("LLM reranker requires OLLAMA_URL — returning original order")
-			return results.slice(0, topK).map((r) => ({ ...r, rerankedScore: r.score }))
+			return results
+				.slice(0, topK)
+				.map((r) => ({ ...r, rerankedScore: r.score }))
 		}
 
 		const scored: RerankOutput[] = []
@@ -89,7 +91,10 @@ Return ONLY the JSON array, nothing else.`
 				rerankedScore: scores[i] ?? FALLBACK_SCORE,
 			}))
 		} catch (err) {
-			logger.warn({ err, batchSize: batch.length }, "LLM reranker batch failed — using fallback scores")
+			logger.warn(
+				{ err, batchSize: batch.length },
+				"LLM reranker batch failed — using fallback scores",
+			)
 			return batch.map((r) => ({
 				id: r.id,
 				score: r.score,
@@ -106,7 +111,9 @@ Return ONLY the JSON array, nothing else.`
 			if (jsonMatch) {
 				const arr = JSON.parse(jsonMatch[0]) as number[]
 				if (Array.isArray(arr) && arr.length >= expected) {
-					return arr.slice(0, expected).map((n) => Math.max(0, Math.min(1, Number(n) || FALLBACK_SCORE)))
+					return arr
+						.slice(0, expected)
+						.map((n) => Math.max(0, Math.min(1, Number(n) || FALLBACK_SCORE)))
 				}
 			}
 		} catch {
@@ -123,6 +130,9 @@ Return ONLY the JSON array, nothing else.`
 		}
 
 		// Not enough scores — pad with fallback
-		return Array.from({ length: expected }, (_, i) => matches[i] ?? FALLBACK_SCORE)
+		return Array.from(
+			{ length: expected },
+			(_, i) => matches[i] ?? FALLBACK_SCORE,
+		)
 	}
 }

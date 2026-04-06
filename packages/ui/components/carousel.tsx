@@ -162,6 +162,7 @@ function CarouselItem({ className, ...props }: React.ComponentProps<"div">) {
 				className,
 			)}
 			data-slot="carousel-item"
+			// biome-ignore lint/a11y/useSemanticElements: shadcn/ui carousel pattern — div with role="group" is intentional
 			role="group"
 			{...props}
 		/>

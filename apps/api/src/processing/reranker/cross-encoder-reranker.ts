@@ -37,8 +37,13 @@ export class CrossEncoderReranker implements Reranker {
 				.sort((a, b) => b.rerankedScore - a.rerankedScore)
 				.slice(0, topK)
 		} catch (err) {
-			logger.warn({ err }, "Cross-encoder reranker failed — returning original order")
-			return results.slice(0, topK).map((r) => ({ ...r, rerankedScore: r.score }))
+			logger.warn(
+				{ err },
+				"Cross-encoder reranker failed — returning original order",
+			)
+			return results
+				.slice(0, topK)
+				.map((r) => ({ ...r, rerankedScore: r.score }))
 		}
 	}
 }

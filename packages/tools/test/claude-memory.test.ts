@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest"
-import { createClaudeMemoryTool, type MemoryCommand } from "./claude-memory"
+import {
+	createClaudeMemoryTool,
+	type MemoryCommand,
+} from "../src/claude-memory"
 import "dotenv/config"
 
-// Test configuration
+// Test configuration — all tests hit the real API, so skip without secrets
+const hasApiKey = !!process.env.SUPERMEMORY_API_KEY
 const TEST_CONFIG = {
 	apiKey: process.env.SUPERMEMORY_API_KEY || "test-api-key",
 	baseUrl: process.env.SUPERMEMORY_BASE_URL,
@@ -10,7 +14,7 @@ const TEST_CONFIG = {
 	memoryContainerTag: "claude_memory_test",
 }
 
-describe("Claude Memory Tool", () => {
+describe.skipIf(!hasApiKey)("Claude Memory Tool", () => {
 	let memoryTool: ReturnType<typeof createClaudeMemoryTool>
 
 	beforeEach(() => {
@@ -330,123 +334,3 @@ describe("Claude Memory Tool", () => {
 		})
 	})
 })
-
-/**
- * Manual test runner - run this directly to test the memory tool
- * Usage: bun run src/claude-memory.test.ts
- */
-async function runManualTests() {
-	console.log("🧪 Running Claude Memory Tool Manual Tests")
-	console.log("==========================================")
-
-	if (!process.env.SUPERMEMORY_API_KEY) {
-		console.error("❌ SUPERMEMORY_API_KEY environment variable is required")
-		console.log("Set your API key in .env file or environment variable")
-		process.exit(1)
-	}
-
-	const memoryTool = createClaudeMemoryTool(process.env.SUPERMEMORY_API_KEY, {
-		projectId: "manual-test-project",
-		memoryContainerTag: "claude_memory_manual_test",
-		baseUrl: process.env.SUPERMEMORY_BASE_URL,
-	})
-
-	const testCases = [
-		{
-			name: "Create a test file",
-			command: {
-				command: "create" as const,
-				path: "/memories/manual-test.md",
-				file_text:
-					"# Manual Test File\n\nThis is a test file for manual testing.\n\n- Item 1\n- Item 2\n- Item 3",
-			},
-		},
-		{
-			name: "Read the test file",
-			command: {
-				command: "view" as const,
-				path: "/memories/manual-test.md",
-			},
-		},
-		{
-			name: "Read specific lines",
-			command: {
-				command: "view" as const,
-				path: "/memories/manual-test.md",
-				view_range: [1, 3] as [number, number],
-			},
-		},
-		{
-			name: "Replace text in file",
-			command: {
-				command: "str_replace" as const,
-				path: "/memories/manual-test.md",
-				old_str: "Manual Test File",
-				new_str: "Updated Manual Test File",
-			},
-		},
-		{
-			name: "Insert text at line 4",
-			command: {
-				command: "insert" as const,
-				path: "/memories/manual-test.md",
-				insert_line: 4,
-				insert_text: "This line was inserted!",
-			},
-		},
-		{
-			name: "List directory contents",
-			command: {
-				command: "view" as const,
-				path: "/memories/",
-			},
-		},
-		{
-			name: "Rename the file",
-			command: {
-				command: "rename" as const,
-				path: "/memories/manual-test.md",
-				new_path: "/memories/renamed-manual-test.md",
-			},
-		},
-		{
-			name: "Test invalid path (should fail)",
-			command: {
-				command: "view" as const,
-				path: "/etc/passwd",
-			},
-		},
-	]
-
-	for (const testCase of testCases) {
-		console.log(`\n🔄 ${testCase.name}`)
-		console.log(`Command: ${JSON.stringify(testCase.command, null, 2)}`)
-
-		try {
-			const result = await memoryTool.handleCommand(testCase.command)
-
-			if (result.success) {
-				console.log("✅ Success")
-				if (result.content) {
-					console.log("📄 Content:")
-					console.log(result.content)
-				}
-			} else {
-				console.log("❌ Failed")
-				console.log("Error:", result.error)
-			}
-		} catch (error) {
-			console.log("💥 Exception:", error)
-		}
-	}
-
-	console.log("\n✨ Manual tests completed!")
-	console.log(
-		"Check your supermemory instance to verify the memory files were created correctly.",
-	)
-}
-
-// If this file is run directly, execute manual tests
-if (import.meta.main) {
-	runManualTests()
-}

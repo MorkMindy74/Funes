@@ -8,7 +8,10 @@ export interface ExtractResult {
 /** Common interface for all extractors */
 export interface Extractor {
 	name: string
-	extract(input: string | Buffer, options?: { filename?: string; mimeType?: string }): Promise<ExtractResult>
+	extract(
+		input: string | Buffer,
+		options?: { filename?: string; mimeType?: string },
+	): Promise<ExtractResult>
 }
 
 /** Check if input looks like a URL */
@@ -29,7 +32,7 @@ function isUrl(input: string | Buffer): boolean {
  * based on content type: URLs → Firecrawl, images → OCR, rest → MarkItDown.
  */
 export async function getExtractor(
-	contentType?: string,
+	_contentType?: string,
 	config?: {
 		firecrawlUrl?: string
 		ocrProvider?: string

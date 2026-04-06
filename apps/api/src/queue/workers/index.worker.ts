@@ -3,11 +3,7 @@ import { eq } from "drizzle-orm"
 import { redisConnection } from "../connection.js"
 import type { IndexJobData } from "../queues.js"
 import { db } from "../../db/index.js"
-import {
-	documents,
-	chunks,
-	documentsToSpaces,
-} from "../../db/schema.js"
+import { documents, chunks, documentsToSpaces } from "../../db/schema.js"
 import { indexChunks } from "../../vector/index.js"
 import { extractMemories } from "../../processing/memory-extractor.js"
 import { consolidateOrCreate } from "../../processing/memory-manager.js"
@@ -97,9 +93,13 @@ export const indexWorker = new Worker<IndexJobData>(
 
 			// 5. Extract knowledge graph entities & relationships
 			try {
-				const graphData = await extractGraphWithCustomPrompt(doc.content ?? "", doc.orgId, {
-					title: doc.title ?? undefined,
-				})
+				const graphData = await extractGraphWithCustomPrompt(
+					doc.content ?? "",
+					doc.orgId,
+					{
+						title: doc.title ?? undefined,
+					},
+				)
 
 				if (graphData.entities.length > 0) {
 					const graphResult = await ingestGraph(
@@ -119,7 +119,10 @@ export const indexWorker = new Worker<IndexJobData>(
 				}
 			} catch (graphErr) {
 				// Non-critical — don't fail the document if graph extraction fails
-				logger.warn({ documentId, err: graphErr }, "IndexWorker: graph extraction failed, skipping")
+				logger.warn(
+					{ documentId, err: graphErr },
+					"IndexWorker: graph extraction failed, skipping",
+				)
 			}
 
 			// 6. Mark document as done

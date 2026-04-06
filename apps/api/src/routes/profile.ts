@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { eq, and, desc, gte } from "drizzle-orm"
 import { db } from "../db/index.js"
-import { memoryEntries, spaces } from "../db/schema.js"
+import { memoryEntries } from "../db/schema.js"
 import { getSession } from "../middleware/auth.js"
 import { generateEmbedding } from "../processing/embeddings.js"
 import { searchMemories } from "../vector/index.js"
@@ -13,7 +13,7 @@ export const profileRoutes = new Hono()
 profileRoutes.post("/", async (c) => {
 	const session = getSession(c)
 	const body = await c.req.json().catch(() => ({}))
-	const { q, containerTag } = body as { q?: string; containerTag?: string }
+	const { q } = body as { q?: string }
 
 	try {
 		// 1. Get static facts (isStatic = true, always included)

@@ -52,7 +52,10 @@ export const chunkWorker = new Worker<ChunkJobData>(
 			}
 
 			// Compute average chunk size
-			const totalChars = chunkResults.reduce((sum, c) => sum + c.content.length, 0)
+			const totalChars = chunkResults.reduce(
+				(sum, c) => sum + c.content.length,
+				0,
+			)
 			const avgChunkSize =
 				chunkResults.length > 0
 					? Math.round(totalChars / chunkResults.length)

@@ -20,11 +20,14 @@ function extractHandle(url: string): string {
 }
 
 function sanitizeForPrompt(input: string, maxLength: number): string {
-	return input
-		.slice(0, maxLength)
-		.replace(/[\x00-\x1F\x7F]/g, "") // strip control characters
-		.replace(/---+|===+|###+ |<\||\|>|\[INST\]|<<SYS>>|<\/s>/gi, "") // strip prompt injection delimiters
-		.trim()
+	return (
+		input
+			.slice(0, maxLength)
+			// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional — stripping control chars from user input
+			.replace(/[\x00-\x1F\x7F]/g, "")
+			.replace(/---+|===+|###+ |<\||\|>|\[INST\]|<<SYS>>|<\/s>/gi, "") // strip prompt injection delimiters
+			.trim()
+	)
 }
 
 function finalPrompt(handle: string, userContext: string) {

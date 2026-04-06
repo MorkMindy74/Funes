@@ -4,37 +4,75 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Structure
 
-This is a **Turbo monorepo** containing multiple applications and shared packages:
+This is a **polyglot monorepo** (TypeScript, Python, Go) managed by Turbo + Bun at the top level, with independent build systems for non-TS ecosystems.
 
 ### Applications (`apps/`)
+- **`api/`** - Hono-based REST API (primary backend)
 - **`web/`** - Next.js web application
-- **`mcp/`** - Model Context Protocol server
+- **`mcp/`** - Model Context Protocol server (Hono)
+- **`browser-extension/`** - Browser extension
+- **`raycast-extension/`** - Raycast integration
+- **`memory-graph-playground/`** - Graph visualization playground
+- **`docs/`** - Documentation site
+
+### Packages (`packages/`) — TypeScript
+- **`tools/`** - AI SDK + OpenAI tool definitions for Supermemory client (`@supermemory/tools`)
+- **`ai-sdk/`** - AI SDK middleware wrapper (`@supermemory/ai-sdk`)
+- **`memory-graph/`** - Knowledge graph operations (`@supermemory/memory-graph`)
+- **`validation/`** - Shared Zod schemas for API request/response validation
+- **`hooks/`** - React hooks (auth, onboarding, etc.)
+- **`ui/`** - Shared Radix-based UI components
+- **`lib/`** - Shared utilities
+- **`markitdown/`** - TypeScript port of Microsoft MarkItDown (PDF, DOCX, XLSX, PPTX, EPUB, HTML, CSV)
+
+### Packages (`packages/`) — Python (build: `hatchling`, env: `uv`)
+- **`openai-sdk-python/`** - OpenAI function-calling tools for Supermemory
+- **`pipecat-sdk-python/`** - Pipecat voice agent integration
+- **`agent-framework-python/`** - Agent framework bindings
+
+### Standalone Ecosystems
+- **`beads/`** — Go project (distributed graph issue tracker for AI agents, built on Dolt). Has its own `go.mod`, `Makefile`, and test suite. **Do not run Biome/Bun/Turbo on this directory.**
+- **`deer-flow/`** — Python project (event-driven orchestration engine for semantic DAGs, LangGraph-based). Has its own `pyproject.toml`, `docker-compose`, and `Makefile`. **Do not run Biome/Bun/Turbo on this directory.**
+- **`skills/`** — Skill definitions for agent orchestration
 
 ## Development Commands
 
-### Root Level (Monorepo)
-- `bun run dev` - Start all applications in development mode
-- `bun run build` - Build all applications
-- `bun run check-types` - Run TypeScript checks across all apps
-- `bun run format-lint` - Format and lint code using Biome
+### Root Level (Turbo Monorepo — TypeScript only)
+- `bun run dev` - Start all TS applications in development mode
+- `bun run build` - Build all TS applications
+- `bun run check-types` - Run TypeScript checks across all TS apps/packages
+- `bun run format-lint` - Format and lint TS code using Biome
 
 ### Web Application (`apps/web/`)
 - `bun run dev` - Start Next.js development server
 - `bun run build` - Build Next.js application
 - `bun run lint` - Run Next.js linting
 
+### Python Packages (`packages/*-python/`)
+- Build: `uv build` or `hatch build`
+- Test: `uv run pytest` or `python -m pytest`
+- These are NOT managed by Turbo/Bun — they have independent toolchains
+
+### Beads (`beads/`)
+- Build: `go build ./cmd/bd/`
+- Test: `go test ./...`
+
+### Deer-Flow (`deer-flow/`)
+- Dev: `make dev` or `docker-compose up`
+- See `deer-flow/README.md` for full setup
+
 ## Architecture Overview
 
 ### Core Technology Stack
-- **Runtime**: Next.js (web)
-- **Framework**: Next.js (web)
-- **Language**: TypeScript throughout
-- **Package Manager**: Bun
-- **Monorepo**: Turbo
+- **Languages**: TypeScript (primary), Python (SDK packages, deer-flow), Go (beads)
+- **TS Runtime**: Node.js / Bun
+- **Web Framework**: Next.js (frontend), Hono (API & MCP)
+- **Package Manager**: Bun (TS), uv/hatch (Python), go modules (Go)
+- **Monorepo**: Turbo (TS packages only)
 - **Authentication**: Better Auth
 - **Monitoring**: Sentry
 
-### API Application (Primary Backend)
+### API Application (`apps/api/` — Primary Backend)
 The API serves as the core backend with these key features:
 
 **Key API Routes**
@@ -46,13 +84,22 @@ The API serves as the core backend with these key features:
 - `/api/auth/*` - Authentication endpoints
 
 ### Web Application
-Next.js application providing user interface for:
+Next.js application providing the main user interface.
+
+### Content Processing Pipeline
+All content goes through the `IngestContentWorkflow` which handles:
+- Content type detection and extraction (via `packages/markitdown`)
+- AI-powered summarization and automatic tagging
+- Local embedding generation (Xenova/transformers, no external API)
+- Knowledge graph entity/relationship extraction (Ollama)
+- Chunking for semantic search optimization
+- Space relationship management
 
 ## Key Libraries & Dependencies
 
-### Shared Dependencies
+### Shared TS Dependencies
 - `better-auth` - Authentication system with organization support
-- `drizzle-orm` - Database ORM
+- `drizzle-orm` - Database ORM (PostgreSQL)
 - `zod` - Schema validation
 - `hono` - Web framework (API & MCP)
 - `@sentry/*` - Error monitoring
@@ -64,38 +111,23 @@ Next.js application providing user interface for:
 - `@tanstack/react-query` - Data fetching
 - `recharts` - Analytics visualization
 
-## Development Workflow
-
-### Content Processing Pipeline
-All content goes through the `IngestContentWorkflow` which handles:
-- Content type detection and extraction
-- AI-powered summarization and automatic tagging
-- Vector embedding generation using Cloudflare AI
-- Chunking for semantic search optimization
-- Space relationship management
-
-### Environment Configuration
-- Uses `wrangler.jsonc` for Cloudflare Workers configuration
-- Supports staging and production environments
-- Requires Cloudflare bindings: Hyperdrive (DB), AI, KV storage, Workflows
-- Cron triggers every 4 hours for connection imports
-
-### Error Handling & Monitoring
-- HTTPException for consistent API error responses
-- Sentry integration with user and organization context
-- Custom logging that filters analytics noise
+### Tools Package (`packages/tools`)
+- `ai@^5` - Vercel AI SDK v5 (note: `apps/api` uses `ai@^6`)
+- `supermemory@^3` - Supermemory client SDK
+- `@mastra/core` - Mastra agent framework integration
 
 ## Code Quality & Standards
 
 ### Linting & Formatting
-- **Biome** used for linting and formatting across the monorepo
-- Run `bun run format-lint` to format and lint all code
+- **Biome** used for linting and formatting across the TS monorepo
+- Run `bun run format-lint` to format and lint all TS code
 - Configuration in `biome.json` at repository root
+- **Scope**: Biome covers `apps/` and `packages/` (TS only). Do NOT run Biome on `beads/` or `deer-flow/`.
 
 ### TypeScript
 - Strict TypeScript configuration with `@total-typescript/tsconfig`
 - Type checking with `bun run check-types`
-- Cloudflare Workers type generation with `cf-typegen`
+- CI checks: `bunx turbo run check-types --filter='@supermemory/ai-sdk' --filter='@supermemory/memory-graph' --filter='@repo/api' --filter='@supermemory/tools'`
 
 ### Database Management
 - Drizzle ORM with schema located in shared packages
@@ -114,7 +146,8 @@ All content goes through the `IngestContentWorkflow` which handles:
 - Secure handling of external service credentials
 - Automatic content type detection and validation
 
-### Deployment
-- Cloudflare Workers for scalable serverless deployment
-- Source map uploads to Sentry for production debugging
-- Environment-specific configuration management
+### Self-Hosted Deployment
+- Docker Compose for self-hosted deployment (`docker-compose.yml`)
+- PostgreSQL + Redis + Ollama + LanceDB as local infrastructure
+- Local embedding generation (no external API dependency)
+- Environment-specific configuration via `.env`

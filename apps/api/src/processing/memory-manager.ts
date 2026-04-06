@@ -10,7 +10,7 @@
  * - Level promotion: promote memories from FACT → CORE based on reinforcement
  */
 
-import { eq, and, desc, lt, sql, isNull } from "drizzle-orm"
+import { eq, and, lt, sql } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { db } from "../db/index.js"
 import { memoryEntries, memoryDocumentSources } from "../db/schema.js"
@@ -74,7 +74,11 @@ export async function consolidateOrCreate(
 			// Found a very similar memory — reinforce it instead of creating a new one
 			await reinforceMemory(match.id, mem.confidence, documentId)
 			logger.debug(
-				{ existingId: match.id, score: match.score, memory: mem.memory.slice(0, 60) },
+				{
+					existingId: match.id,
+					score: match.score,
+					memory: mem.memory.slice(0, 60),
+				},
 				"MemoryManager: consolidated with existing memory",
 			)
 			return match.id
@@ -116,14 +120,16 @@ export async function consolidateOrCreate(
 	})
 
 	// Index in vector store
-	await indexMemories([{
-		id: memId,
-		memory: mem.memory,
-		spaceId,
-		embedding,
-		agentId: scope?.agentId,
-		sessionId: scope?.sessionId,
-	}])
+	await indexMemories([
+		{
+			id: memId,
+			memory: mem.memory,
+			spaceId,
+			embedding,
+			agentId: scope?.agentId,
+			sessionId: scope?.sessionId,
+		},
+	])
 
 	return memId
 }
@@ -188,7 +194,12 @@ export async function reinforceMemory(
 
 	if (newLevel !== existing.memoryLevel) {
 		logger.info(
-			{ memoryId, from: existing.memoryLevel, to: newLevel, sources: newSourceCount },
+			{
+				memoryId,
+				from: existing.memoryLevel,
+				to: newLevel,
+				sources: newSourceCount,
+			},
 			"MemoryManager: memory promoted",
 		)
 	}
@@ -240,7 +251,10 @@ function checkLevelPromotion(
  * - FACT: normal rate
  * - EPISODIC: 150% of normal rate (events fade faster)
  */
-export async function applyTemporalDecay(): Promise<{ decayed: number; forgotten: number }> {
+export async function applyTemporalDecay(): Promise<{
+	decayed: number
+	forgotten: number
+}> {
 	const now = new Date()
 	let decayed = 0
 	let forgotten = 0
@@ -268,7 +282,8 @@ export async function applyTemporalDecay(): Promise<{ decayed: number; forgotten
 		if (mem.memoryLevel === MemoryLevel.CORE) continue
 
 		// Calculate days since last update
-		const daysSinceUpdate = (now.getTime() - mem.updatedAt.getTime()) / (1000 * 60 * 60 * 24)
+		const daysSinceUpdate =
+			(now.getTime() - mem.updatedAt.getTime()) / (1000 * 60 * 60 * 24)
 		if (daysSinceUpdate < 1) continue // Skip if updated today
 
 		// Level-aware decay multiplier
@@ -276,7 +291,10 @@ export async function applyTemporalDecay(): Promise<{ decayed: number; forgotten
 		const effectiveRate = DECAY_RATE * decayMultiplier
 
 		// Apply decay
-		const newConfidence = Math.max(0, (mem.confidence ?? 1) * (1 - effectiveRate * daysSinceUpdate))
+		const newConfidence = Math.max(
+			0,
+			(mem.confidence ?? 1) * (1 - effectiveRate * daysSinceUpdate),
+		)
 
 		if (newConfidence < FORGET_THRESHOLD) {
 			// Below threshold — forget
@@ -345,7 +363,10 @@ export async function forgetExpired(): Promise<number> {
 		.returning({ id: memoryEntries.id })
 
 	if (result.length > 0) {
-		logger.info({ count: result.length }, "MemoryManager: expired memories forgotten")
+		logger.info(
+			{ count: result.length },
+			"MemoryManager: expired memories forgotten",
+		)
 	}
 
 	return result.length
@@ -463,7 +484,8 @@ export async function retrieveMemoriesForRAG(
 	if (options.spaceId) scopeParts.push(`spaceId = "${options.spaceId}"`)
 	if (options.agentId) scopeParts.push(`agentId = "${options.agentId}"`)
 	if (options.sessionId) scopeParts.push(`sessionId = "${options.sessionId}"`)
-	const scopeFilter = scopeParts.length > 0 ? scopeParts.join(" AND ") : undefined
+	const scopeFilter =
+		scopeParts.length > 0 ? scopeParts.join(" AND ") : undefined
 
 	// Get more results from vector store than needed, then re-rank
 	const vectorResults = await searchMemories(queryEmbedding, {
@@ -513,7 +535,9 @@ export async function retrieveMemoriesForRAG(
 				sourceCount: meta.sourceCount ?? 1,
 			}
 		})
-		.filter((r): r is NonNullable<typeof r> => r !== null && r.score >= minSimilarity)
+		.filter(
+			(r): r is NonNullable<typeof r> => r !== null && r.score >= minSimilarity,
+		)
 		.sort((a, b) => b.score - a.score)
 
 	// Apply reranking if configured and query text available
@@ -537,7 +561,10 @@ export async function retrieveMemoriesForRAG(
 					})
 					.filter((r): r is NonNullable<typeof r> => r !== null)
 			} catch (err) {
-				logger.warn({ err }, "Reranking failed — using confidence-weighted scores")
+				logger.warn(
+					{ err },
+					"Reranking failed — using confidence-weighted scores",
+				)
 			}
 		}
 	}

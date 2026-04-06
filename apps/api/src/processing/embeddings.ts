@@ -9,7 +9,13 @@
 import { env } from "../env.js"
 import { logger } from "../logger.js"
 
-let pipeline: any = null
+/** Callable returned by @xenova/transformers pipeline() */
+type EmbeddingPipeline = (
+	text: string | string[],
+	options?: { pooling?: string; normalize?: boolean },
+) => Promise<{ data: Float32Array }>
+
+let pipeline: EmbeddingPipeline | null = null
 let modelName = ""
 
 /**
@@ -19,19 +25,32 @@ let modelName = ""
 async function getEmbeddingPipeline() {
 	if (pipeline && modelName === env.EMBEDDING_MODEL) return pipeline
 
-	logger.info({ model: env.EMBEDDING_MODEL }, "Loading embedding model (first time may take a moment)...")
+	logger.info(
+		{ model: env.EMBEDDING_MODEL },
+		"Loading embedding model (first time may take a moment)...",
+	)
 
 	try {
 		// Dynamic import — @xenova/transformers is ESM-only
 		const { pipeline: createPipeline } = await import("@xenova/transformers")
-		pipeline = await createPipeline("feature-extraction", env.EMBEDDING_MODEL, {
-			quantized: true, // Use quantized model for speed
-		})
+		pipeline = (await createPipeline(
+			"feature-extraction",
+			env.EMBEDDING_MODEL,
+			{
+				quantized: true, // Use quantized model for speed
+			},
+		)) as EmbeddingPipeline
 		modelName = env.EMBEDDING_MODEL
-		logger.info({ model: env.EMBEDDING_MODEL }, "Embedding model loaded successfully")
+		logger.info(
+			{ model: env.EMBEDDING_MODEL },
+			"Embedding model loaded successfully",
+		)
 		return pipeline
 	} catch (err) {
-		logger.error({ err, model: env.EMBEDDING_MODEL }, "Failed to load embedding model")
+		logger.error(
+			{ err, model: env.EMBEDDING_MODEL },
+			"Failed to load embedding model",
+		)
 		throw err
 	}
 }
@@ -49,7 +68,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 	})
 
 	// Convert Tensor to plain array
-	return Array.from(output.data as Float32Array)
+	return Array.from(output.data)
 }
 
 /**
@@ -72,7 +91,7 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
 				pooling: "mean",
 				normalize: true,
 			})
-			results.push(Array.from(output.data as Float32Array))
+			results.push(Array.from(output.data))
 		}
 	}
 

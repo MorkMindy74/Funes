@@ -24,19 +24,13 @@ export async function saveFile(
 }
 
 /** Read a file from local storage */
-export async function getFile(
-	filename: string,
-	subdir = "",
-): Promise<Buffer> {
+export async function getFile(filename: string, subdir = ""): Promise<Buffer> {
 	const dir = subdir ? join(UPLOAD_DIR, subdir) : UPLOAD_DIR
 	return readFile(join(dir, filename))
 }
 
 /** Delete a file from local storage */
-export async function deleteFile(
-	filename: string,
-	subdir = "",
-): Promise<void> {
+export async function deleteFile(filename: string, subdir = ""): Promise<void> {
 	const dir = subdir ? join(UPLOAD_DIR, subdir) : UPLOAD_DIR
 	try {
 		await unlink(join(dir, filename))

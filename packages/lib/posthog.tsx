@@ -45,7 +45,8 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 		// Dynamic import — PostHog only loaded if key is set
 		import("posthog-js").then((mod) => {
 			const posthog = mod.default
-			const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001"
+			const backendUrl =
+				process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001"
 
 			posthog.init(posthogKey, {
 				api_host: `${backendUrl}/orange`,
@@ -77,7 +78,8 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 	return (
 		<>
 			<Suspense fallback={null}>
-				{process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_POSTHOG_KEY && <PostHogPageTracking />}
+				{process.env.NODE_ENV === "production" &&
+					process.env.NEXT_PUBLIC_POSTHOG_KEY && <PostHogPageTracking />}
 			</Suspense>
 			{children}
 		</>
@@ -85,5 +87,12 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function usePostHog() {
-	return getPostHog() || { __loaded: false, capture: () => {}, identify: () => {}, register: () => {} }
+	return (
+		getPostHog() || {
+			__loaded: false,
+			capture: () => {},
+			identify: () => {},
+			register: () => {},
+		}
+	)
 }

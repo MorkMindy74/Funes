@@ -15,6 +15,23 @@ export interface ExtractedEntity {
 	confidence: number
 }
 
+/** Raw shape returned by the LLM before validation */
+interface RawEntity {
+	name?: unknown
+	type?: unknown
+	confidence?: unknown
+	properties?: Record<string, unknown>
+}
+
+/** Raw shape returned by the LLM before validation */
+interface RawRelationship {
+	source?: unknown
+	target?: unknown
+	relation?: unknown
+	confidence?: unknown
+	properties?: Record<string, unknown>
+}
+
 export interface ExtractedRelationship {
 	source: string // entity name
 	target: string // entity name
@@ -43,7 +60,10 @@ export async function extractGraph(
 		try {
 			return await extractWithOllama(content, options)
 		} catch (err) {
-			logger.warn({ err }, "Graph extraction via Ollama failed, falling back to NLP")
+			logger.warn(
+				{ err },
+				"Graph extraction via Ollama failed, falling back to NLP",
+			)
 		}
 	}
 
@@ -107,14 +127,20 @@ Return ONLY valid JSON, no markdown, no explanation.`
 	if (!response.ok) throw new Error(`Ollama returned ${response.status}`)
 
 	const data = (await response.json()) as { response: string }
-	const parsed = JSON.parse(data.response)
+	const parsed = JSON.parse(data.response) as {
+		entities?: RawEntity[]
+		relationships?: RawRelationship[]
+	}
 
 	const entities: ExtractedEntity[] = (parsed.entities ?? [])
 		.slice(0, 20)
-		.map((e: any) => ({
+		.map((e) => ({
 			name: normalizeEntityName(String(e.name ?? "")),
-			type: validateEntityType(e.type),
-			confidence: typeof e.confidence === "number" ? Math.min(1, Math.max(0, e.confidence)) : 0.7,
+			type: validateEntityType(String(e.type ?? "concept")),
+			confidence:
+				typeof e.confidence === "number"
+					? Math.min(1, Math.max(0, e.confidence))
+					: 0.7,
 			properties: e.properties,
 		}))
 		.filter((e: ExtractedEntity) => e.name.length > 1)
@@ -123,11 +149,14 @@ Return ONLY valid JSON, no markdown, no explanation.`
 
 	const relationships: ExtractedRelationship[] = (parsed.relationships ?? [])
 		.slice(0, 20)
-		.map((r: any) => ({
+		.map((r) => ({
 			source: normalizeEntityName(String(r.source ?? "")),
 			target: normalizeEntityName(String(r.target ?? "")),
 			relation: normalizeRelation(String(r.relation ?? "related_to")),
-			confidence: typeof r.confidence === "number" ? Math.min(1, Math.max(0, r.confidence)) : 0.6,
+			confidence:
+				typeof r.confidence === "number"
+					? Math.min(1, Math.max(0, r.confidence))
+					: 0.6,
 			properties: r.properties,
 		}))
 		.filter(
@@ -181,7 +210,9 @@ async function extractWithNLP(
 	}
 
 	// Extract organizations
-	const orgs = (doc as any).organizations?.().out("array") as string[] | undefined
+	const orgs = (doc as any).organizations?.().out("array") as
+		| string[]
+		| undefined
 	for (const o of (orgs ?? []).slice(0, 10)) {
 		const name = normalizeEntityName(o)
 		if (name.length > 1 && !seen.has(name.toLowerCase())) {
@@ -197,29 +228,39 @@ async function extractWithNLP(
 // ─── Helpers ──────────────────────────────────────────────────────
 
 function normalizeEntityName(name: string): string {
-	return name
-		.trim()
-		.replace(/\s+/g, " ")
-		// Title case
-		.replace(/\b\w/g, (c) => c.toUpperCase())
+	return (
+		name
+			.trim()
+			.replace(/\s+/g, " ")
+			// Title case
+			.replace(/\b\w/g, (c) => c.toUpperCase())
+	)
 }
 
 const VALID_ENTITY_TYPES = new Set([
-	"person", "organization", "location", "concept", "event", "tool",
+	"person",
+	"organization",
+	"location",
+	"concept",
+	"event",
+	"tool",
 ])
 
 function validateEntityType(type: string): ExtractedEntity["type"] {
 	const normalized = String(type ?? "concept").toLowerCase()
-	return VALID_ENTITY_TYPES.has(normalized) ? (normalized as ExtractedEntity["type"]) : "concept"
+	return VALID_ENTITY_TYPES.has(normalized)
+		? (normalized as ExtractedEntity["type"])
+		: "concept"
 }
 
 function normalizeRelation(relation: string): string {
-	return relation
-		.toLowerCase()
-		.trim()
-		.replace(/\s+/g, "_")
-		.replace(/[^a-z0-9_]/g, "")
-		|| "related_to"
+	return (
+		relation
+			.toLowerCase()
+			.trim()
+			.replace(/\s+/g, "_")
+			.replace(/[^a-z0-9_]/g, "") || "related_to"
+	)
 }
 
 // ─── Custom prompt extraction ────────────────────────────────────
@@ -244,7 +285,9 @@ export async function extractGraphWithCustomPrompt(
 		const { organizationSettings } = await import("../db/schema.js")
 
 		const [settings] = await db
-			.select({ customExtractionPrompt: organizationSettings.customExtractionPrompt })
+			.select({
+				customExtractionPrompt: organizationSettings.customExtractionPrompt,
+			})
 			.from(organizationSettings)
 			.where(eq(organizationSettings.orgId, orgId))
 			.limit(1)
@@ -254,19 +297,34 @@ export async function extractGraphWithCustomPrompt(
 
 			// Validate: must contain {{content}} placeholder and be under 4000 chars
 			if (!prompt.includes("{{content}}")) {
-				logger.warn({ orgId }, "Custom extraction prompt missing {{content}} placeholder — using default")
+				logger.warn(
+					{ orgId },
+					"Custom extraction prompt missing {{content}} placeholder — using default",
+				)
 			} else if (prompt.length > 4000) {
-				logger.warn({ orgId }, "Custom extraction prompt exceeds 4000 chars — using default")
+				logger.warn(
+					{ orgId },
+					"Custom extraction prompt exceeds 4000 chars — using default",
+				)
 			} else if (env.OLLAMA_URL) {
 				try {
-					return await extractWithOllama(content, { title: options?.title, customPrompt: prompt })
+					return await extractWithOllama(content, {
+						title: options?.title,
+						customPrompt: prompt,
+					})
 				} catch (err) {
-					logger.warn({ err, orgId }, "Custom prompt extraction failed — falling back to default")
+					logger.warn(
+						{ err, orgId },
+						"Custom prompt extraction failed — falling back to default",
+					)
 				}
 			}
 		}
 	} catch (err) {
-		logger.debug({ err, orgId }, "Could not fetch custom extraction prompt — using default")
+		logger.debug(
+			{ err, orgId },
+			"Could not fetch custom extraction prompt — using default",
+		)
 	}
 
 	// Fallback to standard extraction

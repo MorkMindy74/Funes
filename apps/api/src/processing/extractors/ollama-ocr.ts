@@ -18,13 +18,26 @@ import { env } from "../../env.js"
 
 /** Image file extensions recognized by this extractor */
 const IMAGE_EXTENSIONS = new Set([
-	".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff", ".tif", ".svg",
+	".jpg",
+	".jpeg",
+	".png",
+	".webp",
+	".gif",
+	".bmp",
+	".tiff",
+	".tif",
+	".svg",
 ])
 
 /** MIME types recognized as images */
 const IMAGE_MIMES = new Set([
-	"image/jpeg", "image/png", "image/webp", "image/gif",
-	"image/bmp", "image/tiff", "image/svg+xml",
+	"image/jpeg",
+	"image/png",
+	"image/webp",
+	"image/gif",
+	"image/bmp",
+	"image/tiff",
+	"image/svg+xml",
 ])
 
 export class OllamaOcrExtractor implements Extractor {
@@ -52,7 +65,10 @@ export class OllamaOcrExtractor implements Extractor {
 		}
 
 		logger.info(
-			{ type: typeof input === "string" ? "string" : "buffer", filename: options?.filename },
+			{
+				type: typeof input === "string" ? "string" : "buffer",
+				filename: options?.filename,
+			},
 			"OllamaOcrExtractor: processing image",
 		)
 
@@ -107,7 +123,7 @@ export class OllamaOcrExtractor implements Extractor {
 	 */
 	private async toBase64(
 		input: string | Buffer,
-		options?: { filename?: string; mimeType?: string },
+		_options?: { filename?: string; mimeType?: string },
 	): Promise<string | null> {
 		// Already base64 data URI
 		if (typeof input === "string" && isBase64Image(input)) {
@@ -208,7 +224,9 @@ Rules:
 // ─── Helpers ───────────────────────────────────────────────────────
 
 function isBase64Image(input: string): boolean {
-	return /^data:image\/(jpeg|png|webp|gif|bmp|tiff|svg\+xml);base64,/i.test(input)
+	return /^data:image\/(jpeg|png|webp|gif|bmp|tiff|svg\+xml);base64,/i.test(
+		input,
+	)
 }
 
 function isImageUrl(input: string): boolean {
@@ -228,17 +246,34 @@ function hasImageMagicBytes(buf: Buffer): boolean {
 	// JPEG: FF D8 FF
 	if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return true
 	// PNG: 89 50 4E 47
-	if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return true
+	if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47)
+		return true
 	// GIF: 47 49 46
 	if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return true
 	// WebP: 52 49 46 46 ... 57 45 42 50
-	if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 && buf.length >= 12) {
-		if (buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) return true
+	if (
+		buf[0] === 0x52 &&
+		buf[1] === 0x49 &&
+		buf[2] === 0x46 &&
+		buf[3] === 0x46 &&
+		buf.length >= 12
+	) {
+		if (
+			buf[8] === 0x57 &&
+			buf[9] === 0x45 &&
+			buf[10] === 0x42 &&
+			buf[11] === 0x50
+		)
+			return true
 	}
 	// BMP: 42 4D
 	if (buf[0] === 0x42 && buf[1] === 0x4d) return true
 	// TIFF: 49 49 or 4D 4D
-	if ((buf[0] === 0x49 && buf[1] === 0x49) || (buf[0] === 0x4d && buf[1] === 0x4d)) return true
+	if (
+		(buf[0] === 0x49 && buf[1] === 0x49) ||
+		(buf[0] === 0x4d && buf[1] === 0x4d)
+	)
+		return true
 	return false
 }
 
@@ -258,7 +293,7 @@ export async function isOllamaVisionAvailable(
 			signal: AbortSignal.timeout(5000),
 		})
 		if (!resp.ok) return false
-		const data = (await resp.json()) as { details?: { families?: string[] } }
+		const _data = (await resp.json()) as { details?: { families?: string[] } }
 		// Check if model supports vision (multimodal)
 		return true // If model exists, assume it may support vision
 	} catch {

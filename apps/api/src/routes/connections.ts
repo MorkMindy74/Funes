@@ -16,7 +16,11 @@ import { nanoid } from "nanoid"
 import { db } from "../db/index.js"
 import { connections } from "../db/schema.js"
 import { getSession } from "../middleware/auth.js"
-import { resolveCredentials, validateState, refreshAccessToken } from "../services/oauth/common.js"
+import {
+	resolveCredentials,
+	validateState,
+	refreshAccessToken,
+} from "../services/oauth/common.js"
 import { env } from "../env.js"
 import { logger } from "../logger.js"
 
@@ -95,7 +99,10 @@ connectionsRoutes.post("/:provider", async (c) => {
 	} catch (error) {
 		logger.error({ provider, error }, "OAuth initiation failed")
 		return c.json(
-			{ error: error instanceof Error ? error.message : "OAuth initiation failed" },
+			{
+				error:
+					error instanceof Error ? error.message : "OAuth initiation failed",
+			},
 			500,
 		)
 	}
@@ -112,7 +119,9 @@ connectionsRoutes.get("/callback", async (c) => {
 	if (error) {
 		const errorDesc = c.req.query("error_description") || error
 		logger.warn({ error, errorDesc }, "OAuth callback error from provider")
-		return c.redirect(`${env.FRONTEND_URL}/?error=${encodeURIComponent(errorDesc)}`)
+		return c.redirect(
+			`${env.FRONTEND_URL}/?error=${encodeURIComponent(errorDesc)}`,
+		)
 	}
 
 	if (!code || !state) {
@@ -126,7 +135,8 @@ connectionsRoutes.get("/callback", async (c) => {
 		return c.redirect(`${env.FRONTEND_URL}/?error=invalid_state`)
 	}
 
-	const { provider, orgId, userId, redirectUrl, containerTags, codeVerifier } = stateData
+	const { provider, orgId, userId, redirectUrl, containerTags, codeVerifier } =
+		stateData
 
 	// Resolve credentials again for token exchange
 	const creds = await resolveCredentials(provider as Provider, orgId)
@@ -202,8 +212,11 @@ connectionsRoutes.get("/callback", async (c) => {
 		return c.redirect(successUrl.toString())
 	} catch (error) {
 		logger.error({ provider, error }, "OAuth token exchange failed")
-		const errMsg = error instanceof Error ? error.message : "token_exchange_failed"
-		return c.redirect(`${env.FRONTEND_URL}/?error=${encodeURIComponent(errMsg)}`)
+		const errMsg =
+			error instanceof Error ? error.message : "token_exchange_failed"
+		return c.redirect(
+			`${env.FRONTEND_URL}/?error=${encodeURIComponent(errMsg)}`,
+		)
 	}
 })
 
@@ -222,17 +235,26 @@ connectionsRoutes.post("/:connectionId/refresh", async (c) => {
 		.select()
 		.from(connections)
 		.where(
-			and(eq(connections.id, connectionId), eq(connections.orgId, session.orgId)),
+			and(
+				eq(connections.id, connectionId),
+				eq(connections.orgId, session.orgId),
+			),
 		)
 		.limit(1)
 
 	if (!conn) return c.json({ error: "Connection not found" }, 404)
 
 	if (!conn.refreshToken) {
-		return c.json({ error: "This connection type does not support token refresh" }, 400)
+		return c.json(
+			{ error: "This connection type does not support token refresh" },
+			400,
+		)
 	}
 
-	const creds = await resolveCredentials(conn.provider as Provider, session.orgId)
+	const creds = await resolveCredentials(
+		conn.provider as Provider,
+		session.orgId,
+	)
 	if (!creds) {
 		return c.json({ error: "OAuth credentials not found" }, 400)
 	}
@@ -244,7 +266,10 @@ connectionsRoutes.post("/:connectionId/refresh", async (c) => {
 		} else if (conn.provider === "onedrive") {
 			tokenUrl = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
 		} else {
-			return c.json({ error: "Token refresh not supported for this provider" }, 400)
+			return c.json(
+				{ error: "Token refresh not supported for this provider" },
+				400,
+			)
 		}
 
 		const refreshed = await refreshAccessToken(
@@ -317,7 +342,10 @@ connectionsRoutes.get("/:connectionId", async (c) => {
 		.select()
 		.from(connections)
 		.where(
-			and(eq(connections.id, connectionId), eq(connections.orgId, session.orgId)),
+			and(
+				eq(connections.id, connectionId),
+				eq(connections.orgId, session.orgId),
+			),
 		)
 		.limit(1)
 
@@ -345,7 +373,10 @@ connectionsRoutes.delete("/:connectionId", async (c) => {
 	const [conn] = await db
 		.delete(connections)
 		.where(
-			and(eq(connections.id, connectionId), eq(connections.orgId, session.orgId)),
+			and(
+				eq(connections.id, connectionId),
+				eq(connections.orgId, session.orgId),
+			),
 		)
 		.returning({ id: connections.id, provider: connections.provider })
 

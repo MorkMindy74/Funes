@@ -49,7 +49,10 @@ setInterval(() => {
 
 // ─── PKCE ─────────────────────────────────────────────────────────
 
-export function generatePKCE(): { codeVerifier: string; codeChallenge: string } {
+export function generatePKCE(): {
+	codeVerifier: string
+	codeChallenge: string
+} {
 	const codeVerifier = randomBytes(32).toString("base64url")
 	const codeChallenge = createHash("sha256")
 		.update(codeVerifier)

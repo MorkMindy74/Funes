@@ -1,9 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { z } from "zod"
-import {
-	MemoryAddSchema,
-	SearchRequestSchema,
-} from "../api"
+import { MemoryAddSchema, SearchRequestSchema } from "../api"
 
 describe("MemoryAddSchema", () => {
 	it("accepts valid memory input", () => {

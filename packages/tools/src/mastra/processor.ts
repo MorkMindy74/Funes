@@ -234,7 +234,7 @@ export class SupermemoryOutputProcessor implements Processor {
 	async processOutputResult(
 		args: ProcessOutputResultArgs,
 	): Promise<MastraDBMessage[]> {
-		const { messages, messageList, requestContext } = args
+		const { messages, requestContext } = args
 
 		if (this.ctx.addMemory !== "always") {
 			return messages

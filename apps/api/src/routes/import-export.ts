@@ -7,13 +7,11 @@
  */
 
 import { Hono } from "hono"
-import { eq, and, inArray } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { db } from "../db/index.js"
 import {
 	documents,
-	chunks,
 	memoryEntries,
-	memoryDocumentSources,
 	spaces,
 	documentsToSpaces,
 	chatThreads,
@@ -21,13 +19,12 @@ import {
 } from "../db/schema.js"
 import { getSession } from "../middleware/auth.js"
 import { logger } from "../logger.js"
-import { nanoid } from "nanoid"
 
 export const importExportRoutes = new Hono()
 
 // ─── Export format version ─────────────────────────────────────────
 
-const EXPORT_VERSION = "1.0.0"
+const EXPORT_VERSION = "1.1.0"
 
 interface FunesExport {
 	version: string
@@ -40,8 +37,8 @@ interface FunesExport {
 			content: string | null
 			type: string
 			status: string
-			containerTags: string[] | null
-			metadata: Record<string, unknown> | null
+			userId: string
+			metadata: Record<string, string | number | boolean> | null
 			tokenCount: number | null
 			wordCount: number | null
 			createdAt: string
@@ -62,11 +59,16 @@ interface FunesExport {
 		spaces: Array<{
 			id: string
 			name: string | null
+			ownerId: string
 			containerTag: string | null
 			visibility: string | null
 			emoji: string | null
 			createdAt: string
 			updatedAt: string
+		}>
+		documentSpaceLinks: Array<{
+			documentId: string
+			spaceId: string
 		}>
 		chatThreads: Array<{
 			id: string
@@ -94,16 +96,22 @@ importExportRoutes.get("/export", async (c) => {
 
 	try {
 		// Fetch all data in parallel
-		const [docs, mems, spcs, threads] = await Promise.all([
+		const [docs, orgMemories, spcs, threads] = await Promise.all([
 			db.select().from(documents).where(eq(documents.orgId, orgId)),
-			db.select().from(memoryEntries),
+			db.select().from(memoryEntries).where(eq(memoryEntries.orgId, orgId)),
 			db.select().from(spaces).where(eq(spaces.orgId, orgId)),
 			db.select().from(chatThreads).where(eq(chatThreads.orgId, orgId)),
 		])
 
-		// Filter memories by spaces belonging to this org
-		const orgSpaceIds = new Set(spcs.map((s) => s.id))
-		const orgMemories = mems.filter((m) => orgSpaceIds.has(m.spaceId))
+		// Fetch document-space relationships
+		const docIds = docs.map((d) => d.id)
+		const docSpaceLinks =
+			docIds.length > 0
+				? await db
+						.select()
+						.from(documentsToSpaces)
+						.where(inArray(documentsToSpaces.documentId, docIds))
+				: []
 
 		// Fetch chat messages for all threads
 		const threadIds = threads.map((t) => t.id)
@@ -134,7 +142,7 @@ importExportRoutes.get("/export", async (c) => {
 					content: d.content,
 					type: d.type,
 					status: d.status,
-					containerTags: d.containerTags,
+					userId: d.userId,
 					metadata: d.metadata,
 					tokenCount: d.tokenCount,
 					wordCount: d.wordCount,
@@ -156,11 +164,16 @@ importExportRoutes.get("/export", async (c) => {
 				spaces: spcs.map((s) => ({
 					id: s.id,
 					name: s.name,
+					ownerId: s.ownerId,
 					containerTag: s.containerTag,
 					visibility: s.visibility,
 					emoji: s.emoji,
 					createdAt: s.createdAt.toISOString(),
 					updatedAt: s.updatedAt.toISOString(),
+				})),
+				documentSpaceLinks: docSpaceLinks.map((l) => ({
+					documentId: l.documentId,
+					spaceId: l.spaceId,
 				})),
 				chatThreads: threads.map((t) => ({
 					id: t.id,
@@ -186,6 +199,7 @@ importExportRoutes.get("/export", async (c) => {
 				documents: docs.length,
 				memories: orgMemories.length,
 				spaces: spcs.length,
+				documentSpaceLinks: docSpaceLinks.length,
 				threads: threads.length,
 			},
 			"Export completed",
@@ -226,7 +240,14 @@ importExportRoutes.post("/import", async (c) => {
 		"Starting data import",
 	)
 
-	const stats = { documents: 0, memories: 0, spaces: 0, threads: 0, skipped: 0 }
+	const stats = {
+		documents: 0,
+		memories: 0,
+		spaces: 0,
+		documentSpaceLinks: 0,
+		threads: 0,
+		skipped: 0,
+	}
 
 	try {
 		// Import spaces first (memories reference them)
@@ -240,6 +261,7 @@ importExportRoutes.post("/import", async (c) => {
 							name: space.name,
 							containerTag: space.containerTag,
 							orgId,
+							ownerId: space.ownerId || session.user.id,
 							visibility: space.visibility ?? "private",
 							emoji: space.emoji,
 							createdAt: new Date(space.createdAt),
@@ -266,7 +288,7 @@ importExportRoutes.post("/import", async (c) => {
 							type: doc.type,
 							status: doc.status,
 							orgId,
-							containerTags: doc.containerTags,
+							userId: doc.userId || session.user.id,
 							metadata: doc.metadata,
 							tokenCount: doc.tokenCount,
 							wordCount: doc.wordCount,
@@ -275,6 +297,24 @@ importExportRoutes.post("/import", async (c) => {
 						})
 						.onConflictDoNothing()
 					stats.documents++
+				} catch {
+					stats.skipped++
+				}
+			}
+		}
+
+		// Import document-space relationships
+		if (body.data.documentSpaceLinks?.length) {
+			for (const link of body.data.documentSpaceLinks) {
+				try {
+					await db
+						.insert(documentsToSpaces)
+						.values({
+							documentId: link.documentId,
+							spaceId: link.spaceId,
+						})
+						.onConflictDoNothing()
+					stats.documentSpaceLinks++
 				} catch {
 					stats.skipped++
 				}
@@ -291,11 +331,13 @@ importExportRoutes.post("/import", async (c) => {
 							id: mem.id,
 							memory: mem.memory,
 							spaceId: mem.spaceId,
-							isStatic: mem.isStatic,
-							isForgotten: mem.isForgotten,
-							confidence: mem.confidence,
-							memoryLevel: mem.memoryLevel,
-							version: mem.version,
+							orgId,
+							userId: session.user.id,
+							isStatic: mem.isStatic ?? false,
+							isForgotten: mem.isForgotten ?? false,
+							confidence: mem.confidence ?? 1.0,
+							memoryLevel: mem.memoryLevel ?? "fact",
+							version: mem.version ?? 1,
 							isLatest: true,
 							createdAt: new Date(mem.createdAt),
 							updatedAt: new Date(mem.updatedAt),
@@ -351,7 +393,7 @@ importExportRoutes.post("/import", async (c) => {
 		return c.json({
 			success: true,
 			imported: stats,
-			message: `Imported ${stats.documents} documents, ${stats.memories} memories, ${stats.spaces} spaces, ${stats.threads} chat threads. ${stats.skipped} items skipped (duplicates).`,
+			message: `Imported ${stats.documents} documents, ${stats.memories} memories, ${stats.spaces} spaces, ${stats.documentSpaceLinks} document-space links, ${stats.threads} chat threads. ${stats.skipped} items skipped (duplicates).`,
 		})
 	} catch (error) {
 		logger.error({ error }, "Import failed")

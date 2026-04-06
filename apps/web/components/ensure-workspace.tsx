@@ -13,7 +13,8 @@ export function EnsureWorkspace({ children }: { children: React.ReactNode }) {
 		if (isRestoring) return
 		if (!session) {
 			// Check if this is a fresh install (no users yet) → redirect to setup
-			const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"
+			const backendUrl =
+				process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001"
 			fetch(`${backendUrl}/setup/status`)
 				.then((r) => r.json())
 				.then((data: { initialized?: boolean }) => {

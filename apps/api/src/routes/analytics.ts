@@ -1,7 +1,7 @@
 import { Hono } from "hono"
-import { and, eq, gte, count, sql, desc } from "drizzle-orm"
+import { eq, count } from "drizzle-orm"
 import { db } from "../db/index.js"
-import { apiRequests, documents, connections } from "../db/schema.js"
+import { documents, connections } from "../db/schema.js"
 import { getSession } from "../middleware/auth.js"
 
 export const analyticsRoutes = new Hono()

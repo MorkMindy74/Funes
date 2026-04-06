@@ -6,7 +6,8 @@ const { Pool } = pg
 
 async function runMigrations() {
 	const DATABASE_URL =
-		process.env.DATABASE_URL ?? "postgres://funes:funes_dev@localhost:5432/funes"
+		process.env.DATABASE_URL ??
+		"postgres://funes:funes_dev@localhost:5432/funes"
 
 	console.log("Running database migrations...")
 

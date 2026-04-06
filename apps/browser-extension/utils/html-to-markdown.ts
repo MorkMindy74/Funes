@@ -45,9 +45,7 @@ function createTurndown(): TurndownService {
 				.replace(/\s+/g, " ")
 				.trim()
 			let src =
-				element.getAttribute("src") ??
-				element.getAttribute("data-src") ??
-				""
+				element.getAttribute("src") ?? element.getAttribute("data-src") ?? ""
 
 			// Truncate data URIs to avoid bloating markdown
 			if (src.startsWith("data:")) {

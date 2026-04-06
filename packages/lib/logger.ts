@@ -36,8 +36,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 }
 
 function getMinLevel(): number {
-	const env =
-		typeof process !== "undefined" ? process.env?.NODE_ENV : undefined
+	const env = typeof process !== "undefined" ? process.env?.NODE_ENV : undefined
 	return env === "production" ? LOG_LEVELS.info : LOG_LEVELS.debug
 }
 

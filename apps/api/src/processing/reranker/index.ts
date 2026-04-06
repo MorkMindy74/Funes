@@ -21,13 +21,15 @@ export function getReranker(): Reranker | null {
 
 	switch (provider) {
 		case "llm": {
-			const { LLMReranker } = require("./llm-reranker.js") as typeof import("./llm-reranker.js")
+			const { LLMReranker } =
+				require("./llm-reranker.js") as typeof import("./llm-reranker.js")
 			cachedReranker = new LLMReranker()
 			logger.info("Reranker initialized: LLM (Ollama)")
 			break
 		}
 		case "cross-encoder": {
-			const { CrossEncoderReranker } = require("./cross-encoder-reranker.js") as typeof import("./cross-encoder-reranker.js")
+			const { CrossEncoderReranker } =
+				require("./cross-encoder-reranker.js") as typeof import("./cross-encoder-reranker.js")
 			cachedReranker = new CrossEncoderReranker()
 			logger.info("Reranker initialized: cross-encoder (bi-encoder similarity)")
 			break

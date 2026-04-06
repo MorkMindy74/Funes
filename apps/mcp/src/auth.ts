@@ -43,13 +43,23 @@ export async function validateApiKey(
 			const status = sessionResponse.status
 
 			if (status === 401) {
-				logger.error("API key validation failed: Invalid or expired API key", { status })
+				logger.error("API key validation failed: Invalid or expired API key", {
+					status,
+				})
 			} else if (status === 403) {
-				logger.error("API key validation failed: User is blocked or access forbidden", { status, responseText })
+				logger.error(
+					"API key validation failed: User is blocked or access forbidden",
+					{ status, responseText },
+				)
 			} else if (status === 429) {
-				logger.error("API key validation failed: Rate limit exceeded", { status })
+				logger.error("API key validation failed: Rate limit exceeded", {
+					status,
+				})
 			} else if (status >= 500) {
-				logger.error("API key validation failed: Server error", { status, responseText })
+				logger.error("API key validation failed: Server error", {
+					status,
+					responseText,
+				})
 			} else {
 				logger.error("API key validation failed", { status, responseText })
 			}
@@ -81,7 +91,9 @@ export async function validateApiKey(
 			name: sessionData.user.name,
 		}
 	} catch (error) {
-		logger.error("API key validation error", { error: error instanceof Error ? error.message : error })
+		logger.error("API key validation error", {
+			error: error instanceof Error ? error.message : error,
+		})
 		return null
 	}
 }
@@ -107,13 +119,21 @@ export async function validateOAuthToken(
 			const status = sessionResponse.status
 
 			if (status === 401) {
-				logger.error("Token validation failed: Invalid or expired token", { status })
+				logger.error("Token validation failed: Invalid or expired token", {
+					status,
+				})
 			} else if (status === 403) {
-				logger.error("Token validation failed: User is blocked or access forbidden", { status, responseText })
+				logger.error(
+					"Token validation failed: User is blocked or access forbidden",
+					{ status, responseText },
+				)
 			} else if (status === 429) {
 				logger.error("Token validation failed: Rate limit exceeded", { status })
 			} else if (status >= 500) {
-				logger.error("Token validation failed: Server error", { status, responseText })
+				logger.error("Token validation failed: Server error", {
+					status,
+					responseText,
+				})
 			} else {
 				logger.error("Token validation failed", { status, responseText })
 			}
@@ -129,11 +149,15 @@ export async function validateOAuthToken(
 		} | null
 
 		if (!sessionData?.userId || !sessionData?.apiKey) {
-			logger.error("Missing userId or apiKey in session response", { sessionData })
+			logger.error("Missing userId or apiKey in session response", {
+				sessionData,
+			})
 			return null
 		}
 
-		logger.info("OAuth validated, got API key for user", { userId: sessionData.userId })
+		logger.info("OAuth validated, got API key for user", {
+			userId: sessionData.userId,
+		})
 
 		return {
 			userId: sessionData.userId,
@@ -142,7 +166,9 @@ export async function validateOAuthToken(
 			name: sessionData.name,
 		}
 	} catch (error) {
-		logger.error("Token validation error", { error: error instanceof Error ? error.message : error })
+		logger.error("Token validation error", {
+			error: error instanceof Error ? error.message : error,
+		})
 		return null
 	}
 }

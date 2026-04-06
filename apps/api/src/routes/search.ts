@@ -1,10 +1,10 @@
 import { Hono } from "hono"
-import { eq, inArray, and, desc } from "drizzle-orm"
+import { eq, inArray, and } from "drizzle-orm"
 import { db } from "../db/index.js"
-import { documents, chunks, spaces, documentsToSpaces, memoryEntries } from "../db/schema.js"
+import { documents, spaces, documentsToSpaces } from "../db/schema.js"
 import { getSession } from "../middleware/auth.js"
 import { generateEmbedding } from "../processing/embeddings.js"
-import { searchChunks, searchMemories } from "../vector/index.js"
+import { searchChunks } from "../vector/index.js"
 import { getReranker } from "../processing/reranker/index.js"
 import { logger } from "../logger.js"
 
@@ -48,14 +48,20 @@ searchRoutes.post("/", async (c) => {
 			try {
 				const reranked = await reranker.rerank(
 					q,
-					chunkResults.map((c) => ({ id: c.documentId + ":" + chunkResults.indexOf(c), content: c.content, score: c.score })),
+					chunkResults.map((c) => ({
+						id: `${c.documentId}:${chunkResults.indexOf(c)}`,
+						content: c.content,
+						score: c.score,
+					})),
 					chunkResults.length,
 				)
-				const rerankedMap = new Map(reranked.map((r) => [r.id, r.rerankedScore]))
+				const rerankedMap = new Map(
+					reranked.map((r) => [r.id, r.rerankedScore]),
+				)
 				chunkResults = chunkResults
 					.map((c, i) => ({
 						...c,
-						score: rerankedMap.get(c.documentId + ":" + i) ?? c.score,
+						score: rerankedMap.get(`${c.documentId}:${i}`) ?? c.score,
 					}))
 					.sort((a, b) => b.score - a.score)
 			} catch (err) {
@@ -70,7 +76,9 @@ searchRoutes.post("/", async (c) => {
 		const docs = await db
 			.select()
 			.from(documents)
-			.where(and(eq(documents.orgId, session.orgId), inArray(documents.id, docIds)))
+			.where(
+				and(eq(documents.orgId, session.orgId), inArray(documents.id, docIds)),
+			)
 
 		const orgDocIds = new Set(docs.map((d) => d.id))
 
@@ -97,7 +105,11 @@ searchRoutes.post("/", async (c) => {
 							spaceRows.map((s) => s.id),
 						),
 					)
-				allowedDocIds = new Set(tagDocLinks.map((d) => d.documentId).filter((id) => orgDocIds.has(id)))
+				allowedDocIds = new Set(
+					tagDocLinks
+						.map((d) => d.documentId)
+						.filter((id) => orgDocIds.has(id)),
+				)
 			} else {
 				allowedDocIds = new Set()
 			}
@@ -105,7 +117,13 @@ searchRoutes.post("/", async (c) => {
 
 		// 6. Group chunks by document and build results
 		const docMap = new Map(docs.map((d) => [d.id, d]))
-		const resultsByDoc = new Map<string, { doc: typeof docs[0]; chunks: Array<{ content: string; score: number; isRelevant: boolean }> }>()
+		const resultsByDoc = new Map<
+			string,
+			{
+				doc: (typeof docs)[0]
+				chunks: Array<{ content: string; score: number; isRelevant: boolean }>
+			}
+		>()
 
 		for (const cr of chunkResults) {
 			if (!allowedDocIds.has(cr.documentId)) continue
@@ -126,7 +144,8 @@ searchRoutes.post("/", async (c) => {
 		// 7. Build final response
 		const results = [...resultsByDoc.values()]
 			.map(({ doc, chunks: docChunks }) => {
-				const avgScore = docChunks.reduce((s, c) => s + c.score, 0) / docChunks.length
+				const avgScore =
+					docChunks.reduce((s, c) => s + c.score, 0) / docChunks.length
 
 				if (avgScore < documentThreshold) return null
 

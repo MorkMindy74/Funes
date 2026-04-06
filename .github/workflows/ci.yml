@@ -22,7 +22,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run TypeScript type checking
-        run: bunx turbo run check-types --filter='@supermemory/ai-sdk' --filter='@supermemory/memory-graph'
+        run: bunx turbo run check-types --filter='@supermemory/ai-sdk' --filter='@supermemory/memory-graph' --filter='@repo/api' --filter='@supermemory/tools'
 
       - name: Run Biome CI (format & lint on changed files)
         run: bunx biome ci --changed --since=origin/main --no-errors-on-unmatched

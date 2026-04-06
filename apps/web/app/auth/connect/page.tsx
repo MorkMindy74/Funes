@@ -10,8 +10,7 @@ import Image from "next/image"
 import { useSearchParams } from "next/navigation"
 import { Suspense, useState } from "react"
 
-const API_URL =
-	process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001"
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001"
 
 function isValidLocalhostCallback(callback: string): boolean {
 	try {

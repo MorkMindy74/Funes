@@ -308,10 +308,7 @@ function createMemoriesPopup(
 	content.querySelectorAll("button[data-memory-index]").forEach((button) => {
 		const htmlButton = button as HTMLButtonElement
 		htmlButton.addEventListener("click", () => {
-			const index = Number.parseInt(
-				htmlButton.dataset.memoryIndex || "0",
-				10,
-			)
+			const index = Number.parseInt(htmlButton.dataset.memoryIndex || "0", 10)
 			const memoryItem = htmlButton.parentElement
 			if (memoryItem) content.removeChild(memoryItem)
 
@@ -326,18 +323,14 @@ function createMemoriesPopup(
 
 			const inputElement = adapter.getInputElement()
 			if (inputElement) {
-				adapter.setSupermemories(
-					inputElement,
-					sanitizeHTML(updatedMemories),
-				)
+				adapter.setSupermemories(inputElement, sanitizeHTML(updatedMemories))
 			}
 
 			// Re-index remaining buttons
 			content
 				.querySelectorAll("button[data-memory-index]")
 				.forEach((btn, newIndex) => {
-					;(btn as HTMLButtonElement).dataset.memoryIndex =
-						newIndex.toString()
+					;(btn as HTMLButtonElement).dataset.memoryIndex = newIndex.toString()
 				})
 
 			if (currentMemories.length <= 1) {
@@ -366,9 +359,7 @@ export async function getRelatedMemories(
 ) {
 	try {
 		const inputElement = adapter.getInputElement()
-		const userQuery = inputElement
-			? adapter.getInputContent(inputElement)
-			: ""
+		const userQuery = inputElement ? adapter.getInputContent(inputElement) : ""
 
 		if (!userQuery.trim()) {
 			console.log(`No query text found for ${adapter.platformName}`)
@@ -405,10 +396,7 @@ export async function getRelatedMemories(
 		if (response?.success && response?.data) {
 			const targetElement = adapter.getInputElement()
 			if (targetElement) {
-				adapter.setSupermemories(
-					targetElement,
-					sanitizeHTML(response.data),
-				)
+				adapter.setSupermemories(targetElement, sanitizeHTML(response.data))
 				iconElement.dataset.memoriesData = response.data
 				updateIconFeedback("Included Memories", iconElement, adapter)
 			} else {

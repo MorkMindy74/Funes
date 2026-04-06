@@ -1,10 +1,9 @@
 import { Hono } from "hono"
 import { nanoid } from "nanoid"
-import { and, eq, inArray, desc, asc, sql, count } from "drizzle-orm"
+import { and, eq, inArray, desc, asc, count } from "drizzle-orm"
 import { db } from "../db/index.js"
 import {
 	documents,
-	chunks,
 	documentsToSpaces,
 	spaces,
 	memoryEntries,
@@ -49,7 +48,9 @@ documentsRoutes.post("/", async (c) => {
 			let space = await db
 				.select()
 				.from(spaces)
-				.where(and(eq(spaces.containerTag, tag), eq(spaces.orgId, session.orgId)))
+				.where(
+					and(eq(spaces.containerTag, tag), eq(spaces.orgId, session.orgId)),
+				)
 				.limit(1)
 				.then((r) => r[0])
 
@@ -85,7 +86,10 @@ documentsRoutes.post("/", async (c) => {
 		logger.info({ documentId: id }, "Document created, enqueued for processing")
 	} catch {
 		// Redis may not be available — document stays in "queued" status
-		logger.warn({ documentId: id }, "Redis unavailable, document saved but not enqueued")
+		logger.warn(
+			{ documentId: id },
+			"Redis unavailable, document saved but not enqueued",
+		)
 	}
 
 	return c.json({ id: doc.id, status: doc.status }, 201)
@@ -112,7 +116,6 @@ documentsRoutes.post("/list", async (c) => {
 	}
 
 	// Filter by containerTags via join
-	let query
 	if (body.containerTags?.length) {
 		const spaceRows = await db
 			.select({ id: spaces.id })
@@ -329,7 +332,15 @@ documentsRoutes.post("/documents/by-ids", async (c) => {
 	const { ids, by = "id" } = body
 
 	if (!ids?.length) {
-		return c.json({ documents: [], pagination: { currentPage: 1, limit: ids?.length ?? 0, totalItems: 0, totalPages: 0 } })
+		return c.json({
+			documents: [],
+			pagination: {
+				currentPage: 1,
+				limit: ids?.length ?? 0,
+				totalItems: 0,
+				totalPages: 0,
+			},
+		})
 	}
 
 	const field = by === "customId" ? documents.customId : documents.id
@@ -387,7 +398,10 @@ documentsRoutes.delete("/bulk", async (c) => {
 		const result = await db
 			.delete(documents)
 			.where(
-				and(eq(documents.orgId, session.orgId), inArray(documents.id, body.ids)),
+				and(
+					eq(documents.orgId, session.orgId),
+					inArray(documents.id, body.ids),
+				),
 			)
 			.returning({ id: documents.id })
 

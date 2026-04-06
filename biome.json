@@ -27,14 +27,19 @@
 			"!**/package.json",
 			"!**/worker-configuration.d.ts",
 			"!**/.turbo/",
-			"!**/.vercel/",
 			"!**/dist/",
 			"!**/.astro/",
 			"!**/build/",
 			"!**/.alchemy/",
 			"!**/.build/",
 			"!**/.open-next/",
-			"!**/*.astro"
+			"!**/*.astro",
+			"!beads",
+			"!deer-flow",
+			"!packages/openai-sdk-python",
+			"!packages/pipecat-sdk-python",
+			"!packages/agent-framework-python",
+			"!skills"
 		]
 	},
 	"formatter": {

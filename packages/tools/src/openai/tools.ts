@@ -30,13 +30,14 @@ export interface ProfileResult {
 		static: string[]
 		dynamic: string[]
 	}
-	searchResults?: Awaited<ReturnType<Supermemory["search"]["execute"]>>
+	searchResults?: { results: Array<unknown>; timing: number; total: number }
 	error?: string
 }
 
 export interface DocumentListResult {
 	success: boolean
-	documents?: Awaited<ReturnType<Supermemory["documents"]["list"]>>["documents"]
+	// SDK returns documents under `.memories` key — we alias to `documents` for caller clarity
+	documents?: Awaited<ReturnType<Supermemory["documents"]["list"]>>["memories"]
 	pagination?: Awaited<
 		ReturnType<Supermemory["documents"]["list"]>
 	>["pagination"]
@@ -196,24 +197,12 @@ export const memoryToolSchemas = {
 		parameters: {
 			type: "object",
 			properties: {
-				containerTag: {
-					type: "string",
-					description: PARAMETER_DESCRIPTIONS.containerTag,
-				},
 				memoryId: {
 					type: "string",
 					description: PARAMETER_DESCRIPTIONS.memoryId,
 				},
-				memoryContent: {
-					type: "string",
-					description: PARAMETER_DESCRIPTIONS.memoryContent,
-				},
-				reason: {
-					type: "string",
-					description: PARAMETER_DESCRIPTIONS.reason,
-				},
 			},
-			required: [],
+			required: ["memoryId"],
 		},
 	} satisfies OpenAI.FunctionDefinition,
 } as const
@@ -327,6 +316,12 @@ export function createGetProfileFunction(
 	}): Promise<ProfileResult> {
 		try {
 			const tag = containerTag || containerTags[0]
+			if (!tag) {
+				return {
+					success: false,
+					error: "No containerTag provided and none configured in config",
+				}
+			}
 
 			const response = await client.profile({
 				containerTag: tag,
@@ -369,6 +364,12 @@ export function createDocumentListFunction(
 	}): Promise<DocumentListResult> {
 		try {
 			const tag = containerTag || containerTags[0]
+			if (!tag) {
+				return {
+					success: false,
+					error: "No containerTag provided and none configured in config",
+				}
+			}
 
 			const response = await client.documents.list({
 				containerTags: [tag],
@@ -379,7 +380,7 @@ export function createDocumentListFunction(
 
 			return {
 				success: true,
-				documents: response.documents,
+				documents: response.memories,
 				pagination: response.pagination,
 			}
 		} catch (error) {
@@ -470,35 +471,15 @@ export function createMemoryForgetFunction(
 	apiKey: string,
 	config?: SupermemoryToolsConfig,
 ) {
-	const { client, containerTags } = createClient(apiKey, config)
+	const { client } = createClient(apiKey, config)
 
 	return async function memoryForget({
-		containerTag,
 		memoryId,
-		memoryContent,
-		reason,
 	}: {
-		containerTag?: string
-		memoryId?: string
-		memoryContent?: string
-		reason?: string
+		memoryId: string
 	}): Promise<MemoryForgetResult> {
 		try {
-			if (!memoryId && !memoryContent) {
-				return {
-					success: false,
-					error: "Either memoryId or memoryContent must be provided",
-				}
-			}
-
-			const tag = containerTag || containerTags[0]
-
-			await client.memories.forget({
-				containerTag: tag,
-				...(memoryId && { id: memoryId }),
-				...(memoryContent && { content: memoryContent }),
-				...(reason && { reason }),
-			})
+			await client.memories.delete(memoryId)
 
 			return {
 				success: true,

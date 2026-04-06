@@ -63,6 +63,7 @@ function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
 			aria-disabled="true"
 			className={cn("text-foreground font-normal", className)}
 			data-slot="breadcrumb-page"
+			// biome-ignore lint/a11y/useSemanticElements: shadcn/ui breadcrumb pattern — span with role="link" is intentional
 			role="link"
 			tabIndex={0}
 			{...props}

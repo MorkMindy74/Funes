@@ -6,13 +6,15 @@ export const env = {
 
 	// Database
 	DATABASE_URL:
-		process.env.DATABASE_URL ?? "postgres://funes:funes_dev@localhost:5432/funes",
+		process.env.DATABASE_URL ??
+		"postgres://funes:funes_dev@localhost:5432/funes",
 
 	// Redis (for BullMQ)
 	REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:6379",
 
 	// Auth
-	BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? "change-me-in-production",
+	BETTER_AUTH_SECRET:
+		process.env.BETTER_AUTH_SECRET ?? "change-me-in-production",
 	BETTER_AUTH_URL: process.env.BETTER_AUTH_URL ?? "http://localhost:3001",
 
 	// Frontend

@@ -116,7 +116,9 @@ export async function indexMemories(
 export async function searchChunks(
 	queryVector: number[],
 	options: { limit?: number; filter?: string } = {},
-): Promise<Array<{ id: string; documentId: string; content: string; score: number }>> {
+): Promise<
+	Array<{ id: string; documentId: string; content: string; score: number }>
+> {
 	const table = await getChunksTable()
 
 	let query = table.search(queryVector).limit(options.limit ?? 10)
@@ -140,7 +142,9 @@ export async function searchChunks(
 export async function searchMemories(
 	queryVector: number[],
 	options: { limit?: number; filter?: string } = {},
-): Promise<Array<{ id: string; memory: string; spaceId: string; score: number }>> {
+): Promise<
+	Array<{ id: string; memory: string; spaceId: string; score: number }>
+> {
 	const table = await getMemoriesTable()
 
 	let query = table.search(queryVector).limit(options.limit ?? 10)

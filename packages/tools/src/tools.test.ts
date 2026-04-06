@@ -8,18 +8,10 @@ import type { SupermemoryToolsConfig } from "./types"
 import "dotenv/config"
 
 describe("@supermemory/tools", () => {
-	// Required API keys - tests will fail if not provided
-	const testApiKey = process.env.SUPERMEMORY_API_KEY
+	// API keys — unit tests run without them, integration tests skip
+	const testApiKey = process.env.SUPERMEMORY_API_KEY ?? "test-placeholder-key"
 	const testOpenAIKey = process.env.OPENAI_API_KEY
-
-	if (!testApiKey) {
-		throw new Error(
-			"SUPERMEMORY_API_KEY environment variable is required for tests",
-		)
-	}
-	if (!testOpenAIKey) {
-		throw new Error("OPENAI_API_KEY environment variable is required for tests")
-	}
+	const hasSecrets = !!process.env.SUPERMEMORY_API_KEY && !!testOpenAIKey
 
 	// Optional configuration with defaults
 	const testBaseUrl = process.env.SUPERMEMORY_BASE_URL ?? undefined
@@ -90,7 +82,7 @@ describe("@supermemory/tools", () => {
 			})
 		})
 
-		describe("AI SDK integration", () => {
+		describe.skipIf(!hasSecrets)("AI SDK integration", () => {
 			it("should work with AI SDK generateText", async () => {
 				const openai = createOpenAI({
 					apiKey: testOpenAIKey,
@@ -310,7 +302,7 @@ describe("@supermemory/tools", () => {
 				const definitions = openAi.getToolDefinitions()
 
 				expect(definitions).toBeDefined()
-				expect(definitions.length).toBe(2)
+				expect(definitions.length).toBe(7)
 
 				// Check searchMemories
 				const searchTool = definitions.find(
@@ -376,7 +368,7 @@ describe("@supermemory/tools", () => {
 			})
 		})
 
-		describe("memory operations", () => {
+		describe.skipIf(!hasSecrets)("memory operations", () => {
 			it("should search memories", async () => {
 				const searchFunction = openAi.createSearchMemoriesFunction(testApiKey, {
 					projectId: "test-search",

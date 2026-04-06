@@ -141,6 +141,12 @@ export const getProfileTool = (
 		execute: async ({ containerTag, query }) => {
 			try {
 				const tag = containerTag || containerTags[0]
+				if (!tag) {
+					return {
+						success: false,
+						error: "No containerTag provided and none configured in config",
+					}
+				}
 
 				const response = await client.profile({
 					containerTag: tag,
@@ -197,6 +203,12 @@ export const documentListTool = (
 		execute: async ({ containerTag, limit, offset, status }) => {
 			try {
 				const tag = containerTag || containerTags[0]
+				if (!tag) {
+					return {
+						success: false,
+						error: "No containerTag provided and none configured in config",
+					}
+				}
 
 				const response = await client.documents.list({
 					containerTags: [tag],
@@ -207,7 +219,7 @@ export const documentListTool = (
 
 				return {
 					success: true,
-					documents: response.documents,
+					documents: response.memories,
 					pagination: response.pagination,
 				}
 			} catch (error) {
@@ -236,7 +248,7 @@ export const documentDeleteTool = (
 		}),
 		execute: async ({ documentId }) => {
 			try {
-				await client.documents.delete({ docId: documentId })
+				await client.documents.delete(documentId)
 
 				return {
 					success: true,
@@ -308,39 +320,14 @@ export const memoryForgetTool = (
 		...(config?.baseUrl ? { baseURL: config.baseUrl } : {}),
 	})
 
-	const containerTags = getContainerTags(config)
-
 	return tool({
 		description: TOOL_DESCRIPTIONS.memoryForget,
 		inputSchema: z.object({
-			containerTag: z
-				.string()
-				.optional()
-				.describe(PARAMETER_DESCRIPTIONS.containerTag),
-			memoryId: z.string().optional().describe(PARAMETER_DESCRIPTIONS.memoryId),
-			memoryContent: z
-				.string()
-				.optional()
-				.describe(PARAMETER_DESCRIPTIONS.memoryContent),
-			reason: z.string().optional().describe(PARAMETER_DESCRIPTIONS.reason),
+			memoryId: z.string().describe(PARAMETER_DESCRIPTIONS.memoryId),
 		}),
-		execute: async ({ containerTag, memoryId, memoryContent, reason }) => {
+		execute: async ({ memoryId }) => {
 			try {
-				if (!memoryId && !memoryContent) {
-					return {
-						success: false,
-						error: "Either memoryId or memoryContent must be provided",
-					}
-				}
-
-				const tag = containerTag || containerTags[0]
-
-				await client.memories.forget({
-					containerTag: tag,
-					...(memoryId && { id: memoryId }),
-					...(memoryContent && { content: memoryContent }),
-					...(reason && { reason }),
-				})
+				await client.memories.delete(memoryId)
 
 				return {
 					success: true,

@@ -8,14 +8,22 @@
  */
 
 import { Hono } from "hono"
-import { streamText, type CoreMessage } from "ai"
+import { streamText, type ModelMessage } from "ai"
 import { eq, and, desc } from "drizzle-orm"
 import { nanoid } from "nanoid"
 import { db } from "../db/index.js"
 import { chatThreads, chatMessages } from "../db/schema.js"
 import { getSession } from "../middleware/auth.js"
-import { resolveModel, isLLMAvailable, getLLMInfo } from "../llm/provider.js"
-import { getConversationContext, summarizeConversation } from "../processing/conversation-summarizer.js"
+import {
+	resolveModel,
+	isLLMAvailable,
+	getLLMInfo,
+	type ResolvedModel,
+} from "../llm/provider.js"
+import {
+	getConversationContext,
+	summarizeConversation,
+} from "../processing/conversation-summarizer.js"
 import { env } from "../env.js"
 import { generateEmbedding } from "../processing/embeddings.js"
 import { searchChunks } from "../vector/index.js"
@@ -27,10 +35,7 @@ export const chatRoutes = new Hono()
 
 // ─── RAG: Build context from user's memories ──────────────────────
 
-async function buildRAGContext(
-	query: string,
-	orgId: string,
-): Promise<string> {
+async function buildRAGContext(query: string, orgId: string): Promise<string> {
 	try {
 		// Generate embedding for the query
 		const embedding = await generateEmbedding(query)
@@ -38,28 +43,42 @@ async function buildRAGContext(
 		// Search chunks, memories, and graph in parallel
 		const [chunkResults, memoryResults, graphContext] = await Promise.all([
 			searchChunks(embedding, { limit: 5 }).catch(() => []),
-			retrieveMemoriesForRAG(embedding, { limit: 8, minSimilarity: 0.25, queryText: query }).catch(() => []),
-			getGraphContextForRAG(query, orgId, { maxDepth: 2, maxNodes: 10 }).catch(() => ""),
+			retrieveMemoriesForRAG(embedding, {
+				limit: 8,
+				minSimilarity: 0.25,
+				queryText: query,
+			}).catch(() => []),
+			getGraphContextForRAG(query, orgId, { maxDepth: 2, maxNodes: 10 }).catch(
+				() => "",
+			),
 		])
 
 		const contextParts: string[] = []
 
 		// Add relevant memories — grouped by level for clarity
 		if (memoryResults.length > 0) {
-			const coreMems = memoryResults.filter((m) => m.level === "core" || m.level === "profile")
-			const otherMems = memoryResults.filter((m) => m.level !== "core" && m.level !== "profile")
+			const coreMems = memoryResults.filter(
+				(m) => m.level === "core" || m.level === "profile",
+			)
+			const otherMems = memoryResults.filter(
+				(m) => m.level !== "core" && m.level !== "profile",
+			)
 
 			if (coreMems.length > 0) {
 				contextParts.push("## Core Knowledge")
 				for (const m of coreMems) {
-					contextParts.push(`- ${m.memory} [${m.level}, confidence: ${Math.round(m.confidence * 100)}%]`)
+					contextParts.push(
+						`- ${m.memory} [${m.level}, confidence: ${Math.round(m.confidence * 100)}%]`,
+					)
 				}
 			}
 
 			if (otherMems.length > 0) {
 				contextParts.push("\n## Related Memories")
 				for (const m of otherMems) {
-					contextParts.push(`- ${m.memory} (relevance: ${Math.round(m.score * 100)}%)`)
+					contextParts.push(
+						`- ${m.memory} (relevance: ${Math.round(m.score * 100)}%)`,
+					)
 				}
 			}
 		}
@@ -69,7 +88,9 @@ async function buildRAGContext(
 		if (relevantChunks.length > 0) {
 			contextParts.push("\n## Relevant Documents")
 			for (const c of relevantChunks) {
-				contextParts.push(`---\n${c.content}\n(relevance: ${Math.round(c.score * 100)}%)`)
+				contextParts.push(
+					`---\n${c.content}\n(relevance: ${Math.round(c.score * 100)}%)`,
+				)
 			}
 		}
 
@@ -92,7 +113,10 @@ async function buildRAGContext(
 			"\n</user_context>"
 		)
 	} catch (error) {
-		logger.warn({ error }, "RAG context retrieval failed, proceeding without context")
+		logger.warn(
+			{ error },
+			"RAG context retrieval failed, proceeding without context",
+		)
 		return ""
 	}
 }
@@ -169,7 +193,7 @@ chatRoutes.post("/", async (c) => {
 	}
 
 	// Resolve LLM model
-	let resolved
+	let resolved: ResolvedModel
 	try {
 		resolved = resolveModel(requestedModel)
 	} catch (error) {
@@ -183,14 +207,19 @@ chatRoutes.post("/", async (c) => {
 	}
 
 	logger.info(
-		{ model: resolved.displayName, provider: resolved.provider, chatId, hasRAG: !!ragContext },
+		{
+			model: resolved.displayName,
+			provider: resolved.provider,
+			chatId,
+			hasRAG: !!ragContext,
+		},
 		"Chat request",
 	)
 
 	// Build message array for the AI SDK
 	const systemPrompt = SYSTEM_PROMPT + priorSummary + ragContext
 
-	const coreMessages: CoreMessage[] = messages.map((m) => ({
+	const coreMessages: ModelMessage[] = messages.map((m) => ({
 		role: m.role as "user" | "assistant" | "system",
 		content:
 			typeof m.content === "string"
@@ -207,7 +236,7 @@ chatRoutes.post("/", async (c) => {
 		model: resolved.model,
 		system: systemPrompt,
 		messages: coreMessages,
-		maxTokens: 4096,
+		maxOutputTokens: 4096,
 		onFinish: async ({ text }) => {
 			// Persist conversation to database
 			try {
@@ -234,7 +263,7 @@ chatRoutes.post("/", async (c) => {
 	})
 
 	// Return AI SDK compatible streaming response
-	return result.toDataStreamResponse({
+	return result.toTextStreamResponse({
 		headers: {
 			"Access-Control-Allow-Origin": "*",
 			"Access-Control-Allow-Credentials": "true",
@@ -261,7 +290,8 @@ async function persistConversation(
 
 	if (existing.length === 0) {
 		// Create new thread — use first few words of user message as title
-		const title = userMessage.length > 80 ? userMessage.slice(0, 77) + "..." : userMessage
+		const title =
+			userMessage.length > 80 ? `${userMessage.slice(0, 77)}...` : userMessage
 
 		await db.insert(chatThreads).values({
 			id: chatId,
@@ -333,7 +363,9 @@ chatRoutes.get("/threads/:id", async (c) => {
 	const thread = await db
 		.select()
 		.from(chatThreads)
-		.where(and(eq(chatThreads.id, threadId), eq(chatThreads.orgId, session.orgId)))
+		.where(
+			and(eq(chatThreads.id, threadId), eq(chatThreads.orgId, session.orgId)),
+		)
 		.limit(1)
 
 	if (thread.length === 0) {
@@ -373,7 +405,9 @@ chatRoutes.delete("/threads/:id", async (c) => {
 	// Verify ownership and delete (messages cascade via FK)
 	const deleted = await db
 		.delete(chatThreads)
-		.where(and(eq(chatThreads.id, threadId), eq(chatThreads.orgId, session.orgId)))
+		.where(
+			and(eq(chatThreads.id, threadId), eq(chatThreads.orgId, session.orgId)),
+		)
 		.returning()
 
 	if (deleted.length === 0) {

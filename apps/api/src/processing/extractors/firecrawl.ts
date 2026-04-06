@@ -67,7 +67,9 @@ export class FirecrawlExtractor implements Extractor {
 
 		if (!response.ok) {
 			const errorText = await response.text().catch(() => "Unknown error")
-			throw new Error(`Firecrawl scrape failed (${response.status}): ${errorText}`)
+			throw new Error(
+				`Firecrawl scrape failed (${response.status}): ${errorText}`,
+			)
 		}
 
 		const data = (await response.json()) as {
@@ -89,9 +91,7 @@ export class FirecrawlExtractor implements Extractor {
 		}
 
 		const title =
-			data.data.metadata?.title ||
-			data.data.metadata?.ogTitle ||
-			undefined
+			data.data.metadata?.title || data.data.metadata?.ogTitle || undefined
 
 		logger.info(
 			{ url, chars: data.data.markdown.length, title },
@@ -114,9 +114,15 @@ export async function batchScrape(
 	firecrawlUrl: string,
 	urls: string[],
 	options?: { maxPages?: number },
-): Promise<Array<{ url: string; result: ExtractResult | null; error?: string }>> {
+): Promise<
+	Array<{ url: string; result: ExtractResult | null; error?: string }>
+> {
 	const extractor = new FirecrawlExtractor(firecrawlUrl)
-	const results: Array<{ url: string; result: ExtractResult | null; error?: string }> = []
+	const results: Array<{
+		url: string
+		result: ExtractResult | null
+		error?: string
+	}> = []
 
 	// Process sequentially to avoid overwhelming Firecrawl
 	for (const url of urls.slice(0, options?.maxPages ?? 50)) {
@@ -141,7 +147,9 @@ function isUrl(input: string): boolean {
 }
 
 /** Check if Firecrawl service is reachable */
-export async function isFirecrawlAvailable(firecrawlUrl: string): Promise<boolean> {
+export async function isFirecrawlAvailable(
+	firecrawlUrl: string,
+): Promise<boolean> {
 	try {
 		const response = await fetch(`${firecrawlUrl}/v1/scrape`, {
 			method: "OPTIONS",

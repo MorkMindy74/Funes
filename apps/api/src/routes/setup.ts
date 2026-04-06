@@ -8,7 +8,6 @@
 import { Hono } from "hono"
 import { db } from "../db/index.js"
 import { logger } from "../logger.js"
-import { auth } from "../auth/index.js"
 import { env } from "../env.js"
 import { isRedisAvailable } from "../queue/connection.js"
 import { sql } from "drizzle-orm"
@@ -27,7 +26,8 @@ setupRoutes.get("/status", async (c) => {
 	} catch (error) {
 		checks.database = {
 			ok: false,
-			message: error instanceof Error ? error.message : "Cannot connect to PostgreSQL",
+			message:
+				error instanceof Error ? error.message : "Cannot connect to PostgreSQL",
 		}
 	}
 
@@ -36,7 +36,10 @@ setupRoutes.get("/status", async (c) => {
 		const redis = await isRedisAvailable()
 		checks.redis = redis
 			? { ok: true }
-			: { ok: false, message: "Redis not reachable — processing pipeline will be disabled" }
+			: {
+					ok: false,
+					message: "Redis not reachable — processing pipeline will be disabled",
+				}
 	} catch {
 		checks.redis = { ok: false, message: "Redis check failed" }
 	}
@@ -52,7 +55,10 @@ setupRoutes.get("/status", async (c) => {
 				const models = data.models?.map((m) => m.name) ?? []
 				checks.ollama = {
 					ok: true,
-					message: models.length > 0 ? `Models: ${models.join(", ")}` : "Connected, no models pulled yet",
+					message:
+						models.length > 0
+							? `Models: ${models.join(", ")}`
+							: "Connected, no models pulled yet",
 				}
 			} else {
 				checks.ollama = { ok: false, message: "Ollama not responding" }
@@ -61,7 +67,10 @@ setupRoutes.get("/status", async (c) => {
 			checks.ollama = { ok: false, message: "Cannot reach Ollama" }
 		}
 	} else {
-		checks.ollama = { ok: false, message: "Not configured (optional — set OLLAMA_URL)" }
+		checks.ollama = {
+			ok: false,
+			message: "Not configured (optional — set OLLAMA_URL)",
+		}
 	}
 
 	// 4. Firecrawl (optional)
@@ -77,15 +86,24 @@ setupRoutes.get("/status", async (c) => {
 			checks.firecrawl = { ok: false, message: "Cannot reach Firecrawl" }
 		}
 	} else {
-		checks.firecrawl = { ok: false, message: "Not configured (optional — set FIRECRAWL_URL)" }
+		checks.firecrawl = {
+			ok: false,
+			message: "Not configured (optional — set FIRECRAWL_URL)",
+		}
 	}
 
 	// 5. OCR provider (optional)
 	if (env.OCR_PROVIDER) {
 		if (env.OCR_PROVIDER === "ollama-ocr") {
 			checks.ocr = env.OLLAMA_URL
-				? { ok: true, message: `Ollama Vision OCR (model: ${env.OLLAMA_OCR_MODEL || env.OLLAMA_MODEL || "llava"})` }
-				: { ok: false, message: "OCR_PROVIDER=ollama-ocr but OLLAMA_URL not set" }
+				? {
+						ok: true,
+						message: `Ollama Vision OCR (model: ${env.OLLAMA_OCR_MODEL || env.OLLAMA_MODEL || "llava"})`,
+					}
+				: {
+						ok: false,
+						message: "OCR_PROVIDER=ollama-ocr but OLLAMA_URL not set",
+					}
 		} else if (env.OCR_PROVIDER === "chandra") {
 			if (env.CHANDRA_URL) {
 				try {
@@ -99,13 +117,22 @@ setupRoutes.get("/status", async (c) => {
 					checks.ocr = { ok: false, message: "Cannot reach Chandra" }
 				}
 			} else {
-				checks.ocr = { ok: false, message: "OCR_PROVIDER=chandra but CHANDRA_URL not set" }
+				checks.ocr = {
+					ok: false,
+					message: "OCR_PROVIDER=chandra but CHANDRA_URL not set",
+				}
 			}
 		} else {
-			checks.ocr = { ok: false, message: `Unknown OCR_PROVIDER: ${env.OCR_PROVIDER}` }
+			checks.ocr = {
+				ok: false,
+				message: `Unknown OCR_PROVIDER: ${env.OCR_PROVIDER}`,
+			}
 		}
 	} else {
-		checks.ocr = { ok: false, message: "Not configured (optional — set OCR_PROVIDER)" }
+		checks.ocr = {
+			ok: false,
+			message: "Not configured (optional — set OCR_PROVIDER)",
+		}
 	}
 
 	// 6. Vector backend
@@ -128,7 +155,9 @@ setupRoutes.get("/status", async (c) => {
 	let hasUsers = false
 	let userCount = 0
 	try {
-		const result = await db.execute(sql`SELECT COUNT(*)::int as count FROM "user"`)
+		const result = await db.execute(
+			sql`SELECT COUNT(*)::int as count FROM "user"`,
+		)
 		userCount = (result.rows[0] as { count: number })?.count ?? 0
 		hasUsers = userCount > 0
 	} catch {
@@ -152,7 +181,9 @@ setupRoutes.get("/status", async (c) => {
 setupRoutes.post("/init", async (c) => {
 	// Check if already initialized
 	try {
-		const result = await db.execute(sql`SELECT COUNT(*)::int as count FROM "user"`)
+		const result = await db.execute(
+			sql`SELECT COUNT(*)::int as count FROM "user"`,
+		)
 		const count = (result.rows[0] as { count: number })?.count ?? 0
 		if (count > 0) {
 			return c.json(
@@ -200,11 +231,16 @@ setupRoutes.post("/init", async (c) => {
 
 		if (!signUpResp.ok) {
 			const errBody = await signUpResp.text().catch(() => "Unknown error")
-			logger.error({ status: signUpResp.status, body: errBody }, "Setup init: sign-up failed")
+			logger.error(
+				{ status: signUpResp.status, body: errBody },
+				"Setup init: sign-up failed",
+			)
 			return c.json({ error: `Sign-up failed: ${errBody}` }, 500)
 		}
 
-		const userData = (await signUpResp.json()) as { user?: { id: string; email: string } }
+		const userData = (await signUpResp.json()) as {
+			user?: { id: string; email: string }
+		}
 
 		// Forward set-cookie headers from sign-up response
 		const setCookies = signUpResp.headers.getSetCookie?.() ?? []
@@ -238,7 +274,10 @@ setupRoutes.post("/init", async (c) => {
 				orgCreated = orgResp.ok
 				if (!orgResp.ok) {
 					const errBody = await orgResp.text().catch(() => "")
-					logger.warn({ status: orgResp.status, body: errBody }, "Setup init: org creation failed")
+					logger.warn(
+						{ status: orgResp.status, body: errBody },
+						"Setup init: org creation failed",
+					)
 				}
 			} catch (orgError) {
 				logger.warn({ error: orgError }, "Setup init: org creation error")

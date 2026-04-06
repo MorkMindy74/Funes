@@ -63,7 +63,9 @@ export async function exchangeCode(
 	// Notion tokens don't expire (1 year+ lifetime), set far future
 	const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
 
-	const owner = data.owner as { user?: { person?: { email?: string } } } | undefined
+	const owner = data.owner as
+		| { user?: { person?: { email?: string } } }
+		| undefined
 
 	return {
 		accessToken: data.access_token as string,

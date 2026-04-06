@@ -73,7 +73,9 @@ export async function exchangeCode(
 }
 
 /** Get user email from Google */
-export async function getUserInfo(accessToken: string): Promise<{ email: string }> {
+export async function getUserInfo(
+	accessToken: string,
+): Promise<{ email: string }> {
 	const resp = await fetch(USERINFO_URL, {
 		headers: { Authorization: `Bearer ${accessToken}` },
 		signal: AbortSignal.timeout(10000),

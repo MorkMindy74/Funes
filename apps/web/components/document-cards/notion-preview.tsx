@@ -128,6 +128,8 @@ export function NotionPreview({
 												<svg
 													viewBox="0 0 10 10"
 													className="w-full h-full text-white"
+													role="img"
+													aria-label="Checked"
 												>
 													<path
 														d="M2.5 5L4.5 7L7.5 3.5"

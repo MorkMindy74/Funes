@@ -48,9 +48,7 @@ async function extractWithNLP(
 	// If there's a title, it's a strong memory
 	if (options?.title) {
 		memories.push({
-			memory: options.url
-				? `${options.title} (${options.url})`
-				: options.title,
+			memory: options.url ? `${options.title} (${options.url})` : options.title,
 			level: MemoryLevel.FACT,
 			confidence: 0.9,
 			isStatic: false,
@@ -75,7 +73,8 @@ async function extractWithNLP(
 			(sentDoc as any).organizations?.().length > 0
 
 		const hasNumber = /\d+/.test(sentence)
-		const hasDefinition = /\b(is|are|was|were|means|refers to|defined as)\b/i.test(sentence)
+		const hasDefinition =
+			/\b(is|are|was|were|means|refers to|defined as)\b/i.test(sentence)
 
 		if (hasEntity || hasNumber || hasDefinition) {
 			if (!keyPhrases.has(sentence)) {
@@ -132,14 +131,17 @@ Return ONLY valid JSON array, no markdown, no explanation.`
 
 	try {
 		const parsed = JSON.parse(data.response)
-		const arr = Array.isArray(parsed) ? parsed : parsed.memories ?? []
+		const arr = Array.isArray(parsed) ? parsed : (parsed.memories ?? [])
 
 		return arr.slice(0, 15).map((m: any) => ({
 			memory: String(m.memory ?? m.text ?? ""),
 			level: Object.values(MemoryLevel).includes(m.level)
 				? m.level
 				: MemoryLevel.FACT,
-			confidence: typeof m.confidence === "number" ? Math.min(1, Math.max(0, m.confidence)) : 0.6,
+			confidence:
+				typeof m.confidence === "number"
+					? Math.min(1, Math.max(0, m.confidence))
+					: 0.6,
 			isStatic: m.isStatic === true,
 			metadata: m.metadata,
 		}))

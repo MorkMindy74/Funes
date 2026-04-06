@@ -21,13 +21,25 @@ import { env } from "../../env.js"
 
 /** File types that Chandra can OCR */
 const OCR_EXTENSIONS = new Set([
-	".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff", ".tif",
+	".jpg",
+	".jpeg",
+	".png",
+	".webp",
+	".gif",
+	".bmp",
+	".tiff",
+	".tif",
 	".pdf", // Scanned PDFs
 ])
 
 const IMAGE_MIMES = new Set([
-	"image/jpeg", "image/png", "image/webp", "image/gif",
-	"image/bmp", "image/tiff", "application/pdf",
+	"image/jpeg",
+	"image/png",
+	"image/webp",
+	"image/gif",
+	"image/bmp",
+	"image/tiff",
+	"application/pdf",
 ])
 
 export class ChandraExtractor implements Extractor {
@@ -50,7 +62,10 @@ export class ChandraExtractor implements Extractor {
 		}
 
 		logger.info(
-			{ type: typeof input === "string" ? "string" : "buffer", filename: options?.filename },
+			{
+				type: typeof input === "string" ? "string" : "buffer",
+				filename: options?.filename,
+			},
 			"ChandraExtractor: processing document",
 		)
 
@@ -116,7 +131,9 @@ export class ChandraExtractor implements Extractor {
 			try {
 				const url = new URL(input)
 				filename = url.pathname.split("/").pop() || filename
-			} catch { /* keep default */ }
+			} catch {
+				/* keep default */
+			}
 		} else {
 			throw new Error("Unsupported input format for Chandra OCR")
 		}
@@ -184,7 +201,9 @@ function isImageUrl(input: string): boolean {
 }
 
 /** Check if Chandra service is reachable */
-export async function isChandraAvailable(chandraUrl?: string): Promise<boolean> {
+export async function isChandraAvailable(
+	chandraUrl?: string,
+): Promise<boolean> {
 	const url = (chandraUrl || env.CHANDRA_URL).replace(/\/$/, "")
 	if (!url) return false
 

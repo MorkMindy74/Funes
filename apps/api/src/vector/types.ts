@@ -51,8 +51,14 @@ export interface VectorBackend {
 	indexMemories(memories: MemoryRecord[]): Promise<void>
 
 	// Search operations
-	searchChunks(queryVector: number[], options?: SearchOptions): Promise<ChunkSearchResult[]>
-	searchMemories(queryVector: number[], options?: SearchOptions): Promise<MemorySearchResult[]>
+	searchChunks(
+		queryVector: number[],
+		options?: SearchOptions,
+	): Promise<ChunkSearchResult[]>
+	searchMemories(
+		queryVector: number[],
+		options?: SearchOptions,
+	): Promise<MemorySearchResult[]>
 
 	// Delete operations
 	deleteDocumentChunks(documentId: string): Promise<void>

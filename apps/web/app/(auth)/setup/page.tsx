@@ -50,9 +50,7 @@ export default function SetupPage() {
 				router.replace("/login")
 			}
 		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : "Cannot connect to backend",
-			)
+			setError(err instanceof Error ? err.message : "Cannot connect to backend")
 		} finally {
 			setLoading(false)
 		}
@@ -113,9 +111,7 @@ export default function SetupPage() {
 			>
 				{/* Header */}
 				<div className="text-center mb-8">
-					<h1 className="text-4xl font-bold mb-2">
-						Funes Setup
-					</h1>
+					<h1 className="text-4xl font-bold mb-2">Funes Setup</h1>
 					<p className="text-gray-400">
 						Welcome! Let&apos;s get your self-hosted memory system ready.
 					</p>
@@ -138,8 +134,9 @@ export default function SetupPage() {
 						<div className="text-red-400 text-sm">
 							<p className="font-medium">Cannot reach backend</p>
 							<p className="text-gray-500 mt-1">
-								Make sure <code className="text-gray-400">docker compose up</code> is running
-								and the API is accessible at{" "}
+								Make sure{" "}
+								<code className="text-gray-400">docker compose up</code> is
+								running and the API is accessible at{" "}
 								<code className="text-gray-400">{BACKEND_URL}</code>
 							</p>
 							<button
@@ -339,9 +336,7 @@ function ServiceRow({ name, check }: { name: string; check: ServiceCheck }) {
 				/>
 				<span className="text-gray-300">
 					{labels[name] || name}
-					{isOptional && (
-						<span className="text-gray-600 ml-1">(optional)</span>
-					)}
+					{isOptional && <span className="text-gray-600 ml-1">(optional)</span>}
 				</span>
 			</div>
 			<span

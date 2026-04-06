@@ -35,7 +35,8 @@ export const documents = pgTable(
 		status: varchar("status", { length: 50 }).notNull().default("queued"),
 
 		// Metadata
-		metadata: jsonb("metadata").$type<Record<string, string | number | boolean>>(),
+		metadata:
+			jsonb("metadata").$type<Record<string, string | number | boolean>>(),
 		processingMetadata: jsonb("processing_metadata").$type<{
 			startTime?: number
 			endTime?: number
@@ -67,8 +68,12 @@ export const documents = pgTable(
 		summaryEmbeddingModel: varchar("summary_embedding_model", { length: 100 }),
 
 		// Timestamps
-		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => [
 		index("documents_org_id_idx").on(table.orgId),
@@ -93,13 +98,16 @@ export const chunks = pgTable(
 		embeddedContent: text("embedded_content"),
 		type: varchar("type", { length: 20 }).notNull().default("text"),
 		position: integer("position").notNull(),
-		metadata: jsonb("metadata").$type<Record<string, string | number | boolean>>(),
+		metadata:
+			jsonb("metadata").$type<Record<string, string | number | boolean>>(),
 
 		// Embeddings
 		embedding: jsonb("embedding").$type<number[]>(),
 		embeddingModel: varchar("embedding_model", { length: 100 }),
 
-		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => [
 		index("chunks_document_id_idx").on(table.documentId),
@@ -117,18 +125,28 @@ export const spaces = pgTable(
 		orgId: varchar("org_id", { length: 36 }).notNull(),
 		ownerId: varchar("owner_id", { length: 36 }).notNull(),
 		containerTag: varchar("container_tag", { length: 255 }),
-		visibility: varchar("visibility", { length: 20 }).notNull().default("private"),
+		visibility: varchar("visibility", { length: 20 })
+			.notNull()
+			.default("private"),
 		isExperimental: boolean("is_experimental").notNull().default(false),
 		emoji: varchar("emoji", { length: 10 }),
 
-		metadata: jsonb("metadata").$type<Record<string, string | number | boolean>>(),
+		metadata:
+			jsonb("metadata").$type<Record<string, string | number | boolean>>(),
 
-		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => [
 		index("spaces_org_id_idx").on(table.orgId),
-		uniqueIndex("spaces_container_tag_org_idx").on(table.containerTag, table.orgId),
+		uniqueIndex("spaces_container_tag_org_idx").on(
+			table.containerTag,
+			table.orgId,
+		),
 	],
 )
 
@@ -151,7 +169,9 @@ export const memoryEntries = pgTable(
 		rootMemoryId: varchar("root_memory_id", { length: 36 }),
 
 		// Relations: { "mem_id": "updates" | "extends" | "derives" }
-		memoryRelations: jsonb("memory_relations").$type<Record<string, string>>().default({}),
+		memoryRelations: jsonb("memory_relations")
+			.$type<Record<string, string>>()
+			.default({}),
 
 		// Source tracking
 		sourceCount: integer("source_count").notNull().default(1),
@@ -177,8 +197,12 @@ export const memoryEntries = pgTable(
 		agentId: varchar("agent_id", { length: 36 }),
 		sessionId: varchar("session_id", { length: 36 }),
 
-		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => [
 		index("memory_entries_space_id_idx").on(table.spaceId),
@@ -202,7 +226,9 @@ export const memoryDocumentSources = pgTable(
 			.references(() => documents.id, { onDelete: "cascade" }),
 		relevanceScore: real("relevance_score").notNull().default(100),
 		metadata: jsonb("metadata").$type<Record<string, unknown>>(),
-		addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+		addedAt: timestamp("added_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => [
 		index("mds_memory_entry_id_idx").on(table.memoryEntryId),
@@ -245,7 +271,9 @@ export const connections = pgTable(
 
 		metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}),
 
-		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => [
 		index("connections_org_id_idx").on(table.orgId),
@@ -265,15 +293,21 @@ export const organizationSettings = pgTable("organization_settings", {
 	excludeItems: jsonb("exclude_items").$type<string[]>(),
 
 	// OAuth custom keys (per provider)
-	googleDriveCustomKeyEnabled: boolean("google_drive_custom_key_enabled").notNull().default(false),
+	googleDriveCustomKeyEnabled: boolean("google_drive_custom_key_enabled")
+		.notNull()
+		.default(false),
 	googleDriveClientId: text("google_drive_client_id"),
 	googleDriveClientSecret: text("google_drive_client_secret"),
 
-	notionCustomKeyEnabled: boolean("notion_custom_key_enabled").notNull().default(false),
+	notionCustomKeyEnabled: boolean("notion_custom_key_enabled")
+		.notNull()
+		.default(false),
 	notionClientId: text("notion_client_id"),
 	notionClientSecret: text("notion_client_secret"),
 
-	onedriveCustomKeyEnabled: boolean("onedrive_custom_key_enabled").notNull().default(false),
+	onedriveCustomKeyEnabled: boolean("onedrive_custom_key_enabled")
+		.notNull()
+		.default(false),
 	onedriveClientId: text("onedrive_client_id"),
 	onedriveClientSecret: text("onedrive_client_secret"),
 
@@ -281,7 +315,9 @@ export const organizationSettings = pgTable("organization_settings", {
 	customExtractionPrompt: text("custom_extraction_prompt"),
 	customUpdatePrompt: text("custom_update_prompt"),
 
-	updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
 })
 
 // ─── API Requests (analytics) ───────────────────────────────────────
@@ -309,10 +345,13 @@ export const apiRequests = pgTable(
 		conversationId: varchar("conversation_id", { length: 36 }),
 		contextModified: boolean("context_modified").notNull().default(false),
 
-		metadata: jsonb("metadata").$type<Record<string, string | number | boolean>>(),
+		metadata:
+			jsonb("metadata").$type<Record<string, string | number | boolean>>(),
 		origin: varchar("origin", { length: 50 }).notNull().default("api"),
 
-		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => [
 		index("api_requests_org_id_idx").on(table.orgId),
@@ -329,14 +368,18 @@ export const graphNodes = pgTable(
 		name: text("name").notNull(),
 		type: varchar("type", { length: 50 }).notNull(), // person, org, location, concept, event, tool
 		orgId: varchar("org_id", { length: 36 }).notNull(),
-		spaceId: varchar("space_id", { length: 36 }).references(() => spaces.id, { onDelete: "set null" }),
+		spaceId: varchar("space_id", { length: 36 }).references(() => spaces.id, {
+			onDelete: "set null",
+		}),
 
 		// Optional embedding for vector search over entities
 		embedding: jsonb("embedding").$type<number[]>(),
 		embeddingModel: varchar("embedding_model", { length: 100 }),
 
 		// Properties bag — type-specific attributes
-		properties: jsonb("properties").$type<Record<string, unknown>>().default({}),
+		properties: jsonb("properties")
+			.$type<Record<string, unknown>>()
+			.default({}),
 
 		// Provenance
 		sourceMemoryId: varchar("source_memory_id", { length: 36 }),
@@ -344,14 +387,22 @@ export const graphNodes = pgTable(
 		confidence: real("confidence").default(1.0),
 		mentionCount: integer("mention_count").notNull().default(1),
 
-		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => [
 		index("graph_nodes_org_id_idx").on(table.orgId),
 		index("graph_nodes_type_idx").on(table.type),
 		index("graph_nodes_name_idx").on(table.name),
-		uniqueIndex("graph_nodes_name_type_org_idx").on(table.name, table.type, table.orgId),
+		uniqueIndex("graph_nodes_name_type_org_idx").on(
+			table.name,
+			table.type,
+			table.orgId,
+		),
 	],
 )
 
@@ -376,17 +427,27 @@ export const graphEdges = pgTable(
 		sourceMemoryId: varchar("source_memory_id", { length: 36 }),
 		sourceDocumentId: varchar("source_document_id", { length: 36 }),
 
-		properties: jsonb("properties").$type<Record<string, unknown>>().default({}),
+		properties: jsonb("properties")
+			.$type<Record<string, unknown>>()
+			.default({}),
 
-		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => [
 		index("graph_edges_source_idx").on(table.sourceId),
 		index("graph_edges_target_idx").on(table.targetId),
 		index("graph_edges_relation_idx").on(table.relation),
 		index("graph_edges_org_id_idx").on(table.orgId),
-		uniqueIndex("graph_edges_unique_idx").on(table.sourceId, table.targetId, table.relation),
+		uniqueIndex("graph_edges_unique_idx").on(
+			table.sourceId,
+			table.targetId,
+			table.relation,
+		),
 	],
 )
 
@@ -400,8 +461,12 @@ export const chatThreads = pgTable(
 		title: varchar("title", { length: 500 }),
 		metadata: jsonb("metadata").$type<Record<string, unknown>>(),
 
-		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => [index("chat_threads_org_id_idx").on(table.orgId)],
 )
@@ -418,7 +483,9 @@ export const chatMessages = pgTable(
 		content: text("content").notNull(),
 		metadata: jsonb("metadata").$type<Record<string, unknown>>(),
 
-		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => [index("chat_messages_thread_id_idx").on(table.threadId)],
 )
@@ -440,7 +507,9 @@ export const conversationSummaries = pgTable(
 		mode: varchar("mode", { length: 20 }).notNull(), // "sliding_window" | "full"
 		metadata: jsonb("metadata").$type<Record<string, unknown>>(),
 
-		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
 	},
 	(table) => [index("conversation_summaries_thread_id_idx").on(table.threadId)],
 )
@@ -464,35 +533,44 @@ export const spacesRelations = relations(spaces, ({ many }) => ({
 	memoryEntries: many(memoryEntries),
 }))
 
-export const memoryEntriesRelations = relations(memoryEntries, ({ one, many }) => ({
-	space: one(spaces, {
-		fields: [memoryEntries.spaceId],
-		references: [spaces.id],
+export const memoryEntriesRelations = relations(
+	memoryEntries,
+	({ one, many }) => ({
+		space: one(spaces, {
+			fields: [memoryEntries.spaceId],
+			references: [spaces.id],
+		}),
+		documentSources: many(memoryDocumentSources),
 	}),
-	documentSources: many(memoryDocumentSources),
-}))
+)
 
-export const documentsToSpacesRelations = relations(documentsToSpaces, ({ one }) => ({
-	document: one(documents, {
-		fields: [documentsToSpaces.documentId],
-		references: [documents.id],
+export const documentsToSpacesRelations = relations(
+	documentsToSpaces,
+	({ one }) => ({
+		document: one(documents, {
+			fields: [documentsToSpaces.documentId],
+			references: [documents.id],
+		}),
+		space: one(spaces, {
+			fields: [documentsToSpaces.spaceId],
+			references: [spaces.id],
+		}),
 	}),
-	space: one(spaces, {
-		fields: [documentsToSpaces.spaceId],
-		references: [spaces.id],
-	}),
-}))
+)
 
-export const memoryDocumentSourcesRelations = relations(memoryDocumentSources, ({ one }) => ({
-	memoryEntry: one(memoryEntries, {
-		fields: [memoryDocumentSources.memoryEntryId],
-		references: [memoryEntries.id],
+export const memoryDocumentSourcesRelations = relations(
+	memoryDocumentSources,
+	({ one }) => ({
+		memoryEntry: one(memoryEntries, {
+			fields: [memoryDocumentSources.memoryEntryId],
+			references: [memoryEntries.id],
+		}),
+		document: one(documents, {
+			fields: [memoryDocumentSources.documentId],
+			references: [documents.id],
+		}),
 	}),
-	document: one(documents, {
-		fields: [memoryDocumentSources.documentId],
-		references: [documents.id],
-	}),
-}))
+)
 
 export const graphNodesRelations = relations(graphNodes, ({ many, one }) => ({
 	outgoingEdges: many(graphEdges, { relationName: "sourceEdges" }),

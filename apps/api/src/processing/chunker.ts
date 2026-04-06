@@ -55,7 +55,7 @@ export function chunkContent(markdown: string): ChunkResult[] {
 
 			for (const sentence of sentences) {
 				if (
-					estimateTokens(sentenceChunk + " " + sentence) > TARGET_CHUNK_SIZE &&
+					estimateTokens(`${sentenceChunk} ${sentence}`) > TARGET_CHUNK_SIZE &&
 					sentenceChunk.trim()
 				) {
 					chunks.push({
@@ -65,7 +65,7 @@ export function chunkContent(markdown: string): ChunkResult[] {
 					})
 					// Overlap: keep last part of previous chunk
 					const overlap = sentenceChunk.slice(-OVERLAP_CHARS)
-					sentenceChunk = overlap + " " + sentence
+					sentenceChunk = `${overlap} ${sentence}`
 				} else {
 					sentenceChunk += (sentenceChunk ? " " : "") + sentence
 				}
@@ -79,7 +79,7 @@ export function chunkContent(markdown: string): ChunkResult[] {
 
 		// Check if adding this paragraph exceeds target
 		if (
-			estimateTokens(currentChunk + "\n\n" + para) > TARGET_CHUNK_SIZE &&
+			estimateTokens(`${currentChunk}\n\n${para}`) > TARGET_CHUNK_SIZE &&
 			currentChunk.trim()
 		) {
 			chunks.push({
@@ -89,7 +89,7 @@ export function chunkContent(markdown: string): ChunkResult[] {
 			})
 			// Overlap: keep last part of previous chunk
 			const overlap = currentChunk.slice(-OVERLAP_CHARS)
-			currentChunk = overlap + "\n\n" + para
+			currentChunk = `${overlap}\n\n${para}`
 		} else {
 			currentChunk += (currentChunk ? "\n\n" : "") + para
 		}
@@ -100,7 +100,7 @@ export function chunkContent(markdown: string): ChunkResult[] {
 		// If too small, merge with last chunk
 		if (chunks.length > 0 && estimateTokens(currentChunk) < MIN_CHUNK_SIZE) {
 			const last = chunks[chunks.length - 1]
-			last.content += "\n\n" + currentChunk.trim()
+			last.content += `\n\n${currentChunk.trim()}`
 		} else {
 			chunks.push({
 				content: currentChunk.trim(),

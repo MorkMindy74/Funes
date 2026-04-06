@@ -5,7 +5,7 @@
  * replacing silent fallbacks with explicit validation errors.
  */
 
-import { z } from "zod"
+import type { z } from "zod"
 
 /**
  * Create a validated environment object from a Zod schema.

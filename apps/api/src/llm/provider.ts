@@ -10,7 +10,7 @@
 import { createOpenAI } from "@ai-sdk/openai"
 import { env } from "../env.js"
 import { logger } from "../logger.js"
-import type { LanguageModelV1 } from "ai"
+import type { LanguageModel } from "ai"
 
 // ─── Ollama via OpenAI-compatible endpoint ─────────────────────────
 
@@ -27,7 +27,7 @@ function getOllamaProvider() {
 // ─── Model resolution ──────────────────────────────────────────────
 
 export interface ResolvedModel {
-	model: LanguageModelV1
+	model: LanguageModel
 	displayName: string
 	provider: string
 }
@@ -44,7 +44,10 @@ export function resolveModel(requestedModel?: string): ResolvedModel {
 
 	if (ollama) {
 		const ollamaModel = env.OLLAMA_MODEL || "llama3.2"
-		logger.debug({ requestedModel, resolved: ollamaModel }, "Resolving LLM model via Ollama")
+		logger.debug(
+			{ requestedModel, resolved: ollamaModel },
+			"Resolving LLM model via Ollama",
+		)
 
 		return {
 			model: ollama(ollamaModel),
@@ -56,7 +59,9 @@ export function resolveModel(requestedModel?: string): ResolvedModel {
 	// Optional: external providers if API keys are set
 	if (process.env.OPENAI_API_KEY) {
 		const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
-		const modelId = requestedModel?.includes("gpt") ? requestedModel : "gpt-4o-mini"
+		const modelId = requestedModel?.includes("gpt")
+			? requestedModel
+			: "gpt-4o-mini"
 		return {
 			model: openai(modelId),
 			displayName: modelId,
@@ -66,12 +71,14 @@ export function resolveModel(requestedModel?: string): ResolvedModel {
 
 	if (process.env.GOOGLE_AI_API_KEY) {
 		// Google AI SDK would go here — for now, suggest Ollama
-		logger.warn("Google AI API key found but not yet supported in chat backend. Use Ollama.")
+		logger.warn(
+			"Google AI API key found but not yet supported in chat backend. Use Ollama.",
+		)
 	}
 
 	throw new Error(
 		"No LLM provider configured. Set OLLAMA_URL (recommended) or OPENAI_API_KEY in your environment. " +
-		"For Ollama: docker compose --profile with-ollama up",
+			"For Ollama: docker compose --profile with-ollama up",
 	)
 }
 
@@ -85,7 +92,11 @@ export function isLLMAvailable(): boolean {
 /**
  * Get information about available LLM providers.
  */
-export function getLLMInfo(): { available: boolean; provider: string; model: string } {
+export function getLLMInfo(): {
+	available: boolean
+	provider: string
+	model: string
+} {
 	if (env.OLLAMA_URL) {
 		return {
 			available: true,

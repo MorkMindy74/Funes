@@ -12,7 +12,10 @@ import { nanoid } from "nanoid"
 import { db } from "../db/index.js"
 import { graphNodes, graphEdges } from "../db/schema.js"
 import { generateEmbedding } from "./embeddings.js"
-import type { ExtractedEntity, ExtractedRelationship } from "./entity-extractor.js"
+import type {
+	ExtractedEntity,
+	ExtractedRelationship,
+} from "./entity-extractor.js"
 import { logger } from "../logger.js"
 
 // ─── Node Management ──��───────────────────────────────────────────
@@ -191,7 +194,10 @@ export async function ingestGraph(
 			const nodeId = await upsertNode(entity, orgId, options)
 			nodeMap.set(entity.name.toLowerCase(), nodeId)
 		} catch (err) {
-			logger.warn({ entity: entity.name, err }, "GraphManager: failed to upsert node")
+			logger.warn(
+				{ entity: entity.name, err },
+				"GraphManager: failed to upsert node",
+			)
 		}
 	}
 
@@ -207,7 +213,10 @@ export async function ingestGraph(
 			await upsertEdge(rel, sourceNodeId, targetNodeId, orgId, options)
 			edgeCount++
 		} catch (err) {
-			logger.warn({ rel: `${rel.source}->${rel.target}`, err }, "GraphManager: failed to upsert edge")
+			logger.warn(
+				{ rel: `${rel.source}->${rel.target}`, err },
+				"GraphManager: failed to upsert edge",
+			)
 		}
 	}
 
@@ -295,7 +304,9 @@ export async function traverseGraph(
 
 	const reachableNodes = await db.execute(traversalQuery)
 
-	const nodeIds = (reachableNodes.rows as Array<{ node_id: string }>).map((r) => r.node_id)
+	const nodeIds = (reachableNodes.rows as Array<{ node_id: string }>).map(
+		(r) => r.node_id,
+	)
 
 	if (nodeIds.length === 0) return { nodes: [], edges: [] }
 
@@ -312,15 +323,39 @@ export async function traverseGraph(
 		FROM ${graphEdges} e
 		JOIN ${graphNodes} s ON s.id = e.source_id
 		JOIN ${graphNodes} t ON t.id = e.target_id
-		WHERE e.source_id IN (${sql.join(nodeIds.map((id) => sql`${id}`), sql`, `)})
-			AND e.target_id IN (${sql.join(nodeIds.map((id) => sql`${id}`), sql`, `)})
+		WHERE e.source_id IN (${sql.join(
+			nodeIds.map((id) => sql`${id}`),
+			sql`, `,
+		)})
+			AND e.target_id IN (${sql.join(
+				nodeIds.map((id) => sql`${id}`),
+				sql`, `,
+			)})
 			AND e.org_id = ${orgId}
 	`
 
 	const edgeResults = await db.execute(edgesQuery)
 
+	interface TraversalNodeRow {
+		node_id: string
+		node_name: string
+		node_type: string
+		node_confidence: number | null
+		mention_count: number | null
+		depth: number
+	}
+	interface TraversalEdgeRow {
+		source_id: string
+		target_id: string
+		source_name: string
+		target_name: string
+		relation: string
+		confidence: number | null
+		weight: number | null
+	}
+
 	return {
-		nodes: (reachableNodes.rows as any[]).map((r) => ({
+		nodes: (reachableNodes.rows as unknown as TraversalNodeRow[]).map((r) => ({
 			id: r.node_id,
 			name: r.node_name,
 			type: r.node_type,
@@ -328,7 +363,7 @@ export async function traverseGraph(
 			mentionCount: r.mention_count ?? 1,
 			depth: r.depth,
 		})),
-		edges: (edgeResults.rows as any[]).map((r) => ({
+		edges: (edgeResults.rows as unknown as TraversalEdgeRow[]).map((r) => ({
 			sourceId: r.source_id,
 			targetId: r.target_id,
 			sourceName: r.source_name,
@@ -365,7 +400,7 @@ export async function getGraphContextForRAG(
 		.where(
 			and(
 				eq(graphNodes.orgId, orgId),
-				sql`LOWER(${graphNodes.name}) LIKE LOWER(${'%' + query + '%'})`,
+				sql`LOWER(${graphNodes.name}) LIKE LOWER(${`%${query}%`})`,
 			),
 		)
 		.limit(3)
@@ -374,7 +409,7 @@ export async function getGraphContextForRAG(
 	let vectorMatches: typeof matchingNodes = []
 	if (matchingNodes.length < 2) {
 		try {
-			const queryEmb = await generateEmbedding(query)
+			const _queryEmb = await generateEmbedding(query)
 			// Simple cosine search over graph node embeddings in PostgreSQL
 			// (using JSONB — not as fast as LanceDB but works for <10k nodes)
 			const results = await db
@@ -414,7 +449,10 @@ export async function getGraphContextForRAG(
 	if (allMatches.length === 0) return ""
 
 	// Traverse from each matching node
-	const allTraversalNodes = new Map<string, { name: string; type: string; depth: number }>()
+	const allTraversalNodes = new Map<
+		string,
+		{ name: string; type: string; depth: number }
+	>()
 	const allTraversalEdges: Array<{
 		sourceName: string
 		targetName: string
@@ -428,7 +466,11 @@ export async function getGraphContextForRAG(
 
 			for (const n of result.nodes) {
 				if (!allTraversalNodes.has(n.id)) {
-					allTraversalNodes.set(n.id, { name: n.name, type: n.type, depth: n.depth })
+					allTraversalNodes.set(n.id, {
+						name: n.name,
+						type: n.type,
+						depth: n.depth,
+					})
 				}
 			}
 

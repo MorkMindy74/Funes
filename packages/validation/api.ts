@@ -247,12 +247,24 @@ export const ListMemoriesQuerySchema = z
 					"Optional tags this memory should be containerized by. This can be an ID for your user, a project ID, or any other identifier you wish to use to group memories.",
 				example: ["user_123", "project_123"],
 			}),
-		// TODO: Improve filter schema
 		filters: z
 			.string()
 			.optional()
+			.refine(
+				(val) => {
+					if (!val) return true
+					try {
+						JSON.parse(val)
+						return true
+					} catch {
+						return false
+					}
+				},
+				{ message: "filters must be a valid JSON string" },
+			)
 			.openapi({
-				description: "Optional filters to apply to the search",
+				description:
+					"Optional filters as a JSON string. Supports AND/OR combinators with string/numeric filter conditions.",
 				example: JSON.stringify({
 					AND: [
 						{

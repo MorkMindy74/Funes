@@ -69,7 +69,10 @@ describe("validateApiKey", () => {
 			text: async () => "Rate limited",
 		})
 
-		const result = await validateApiKey("sm_ratelimited", "https://api.test.com")
+		const result = await validateApiKey(
+			"sm_ratelimited",
+			"https://api.test.com",
+		)
 		expect(result).toBeNull()
 	})
 
@@ -118,7 +121,10 @@ describe("validateOAuthToken", () => {
 			}),
 		})
 
-		const result = await validateOAuthToken("oauth_token", "https://api.test.com")
+		const result = await validateOAuthToken(
+			"oauth_token",
+			"https://api.test.com",
+		)
 		expect(result).toEqual({
 			userId: "user_456",
 			apiKey: "sm_generated",
@@ -151,7 +157,10 @@ describe("validateOAuthToken", () => {
 	it("returns null on network error", async () => {
 		mockFetch.mockRejectedValueOnce(new Error("Connection refused"))
 
-		const result = await validateOAuthToken("error_token", "https://api.test.com")
+		const result = await validateOAuthToken(
+			"error_token",
+			"https://api.test.com",
+		)
 		expect(result).toBeNull()
 	})
 })

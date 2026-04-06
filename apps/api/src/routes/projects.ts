@@ -1,8 +1,13 @@
 import { Hono } from "hono"
 import { nanoid } from "nanoid"
-import { and, eq, inArray, sql, count } from "drizzle-orm"
+import { and, eq, inArray, count } from "drizzle-orm"
 import { db } from "../db/index.js"
-import { spaces, documents, documentsToSpaces, memoryEntries } from "../db/schema.js"
+import {
+	spaces,
+	documents,
+	documentsToSpaces,
+	memoryEntries,
+} from "../db/schema.js"
 import { getSession } from "../middleware/auth.js"
 
 export const projectsRoutes = new Hono()
@@ -65,7 +70,12 @@ projectsRoutes.post("/", async (c) => {
 	const existing = await db
 		.select()
 		.from(spaces)
-		.where(and(eq(spaces.containerTag, containerTag), eq(spaces.orgId, session.orgId)))
+		.where(
+			and(
+				eq(spaces.containerTag, containerTag),
+				eq(spaces.orgId, session.orgId),
+			),
+		)
 		.limit(1)
 
 	if (existing.length > 0) {
@@ -124,7 +134,7 @@ projectsRoutes.delete("/:projectId", async (c) => {
 		.from(documentsToSpaces)
 		.where(eq(documentsToSpaces.spaceId, projectId))
 
-	let docsAffected = docLinks.length
+	const docsAffected = docLinks.length
 	let memoriesAffected = 0
 
 	if (action === "move" && targetProjectId) {

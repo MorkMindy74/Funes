@@ -131,7 +131,9 @@ memoriesRoutes.get("/stats", async (c) => {
 
 	return c.json({
 		total: stats?.total ?? 0,
-		avgConfidence: stats?.avgConfidence ? Number(stats.avgConfidence.toFixed(3)) : 0,
+		avgConfidence: stats?.avgConfidence
+			? Number(stats.avgConfidence.toFixed(3))
+			: 0,
 		forgotten: forgottenCount[0]?.count ?? 0,
 		byLevel: Object.fromEntries(
 			levelCounts.map((lc) => [lc.level ?? "unknown", lc.count]),
@@ -236,20 +238,29 @@ memoriesRoutes.patch("/:id", async (c) => {
 
 		if (!newId) return c.json({ error: "Failed to update memory" }, 500)
 
-		return c.json({ id: newId, message: "Memory updated (new version created)" })
+		return c.json({
+			id: newId,
+			message: "Memory updated (new version created)",
+		})
 	}
 
 	// Metadata-only update (no versioning needed)
 	const updates: Record<string, unknown> = { updatedAt: new Date() }
 	if (body.isStatic !== undefined) updates.isStatic = body.isStatic
-	if (body.memoryLevel && Object.values(MemoryLevel).includes(body.memoryLevel)) {
+	if (
+		body.memoryLevel &&
+		Object.values(MemoryLevel).includes(body.memoryLevel)
+	) {
 		updates.memoryLevel = body.memoryLevel
 	}
 	if (typeof body.confidence === "number") {
 		updates.confidence = Math.min(1, Math.max(0, body.confidence))
 	}
 
-	await db.update(memoryEntries).set(updates).where(eq(memoryEntries.id, memoryId))
+	await db
+		.update(memoryEntries)
+		.set(updates)
+		.where(eq(memoryEntries.id, memoryId))
 
 	return c.json({ id: memoryId, message: "Memory metadata updated" })
 })
@@ -305,7 +316,10 @@ memoriesRoutes.post("/:id/reinforce", async (c) => {
 
 	// Re-fetch to get updated values
 	const [updated] = await db
-		.select({ confidence: memoryEntries.confidence, memoryLevel: memoryEntries.memoryLevel })
+		.select({
+			confidence: memoryEntries.confidence,
+			memoryLevel: memoryEntries.memoryLevel,
+		})
 		.from(memoryEntries)
 		.where(eq(memoryEntries.id, memoryId))
 		.limit(1)

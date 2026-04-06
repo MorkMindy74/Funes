@@ -1,9 +1,9 @@
 import { getSessionCookie } from "better-auth/cookies"
 import { NextResponse } from "next/server"
 
-const ALLOWED_ORIGINS = [
-	process.env.NEXT_PUBLIC_APP_URL,
-].filter(Boolean) as string[]
+const ALLOWED_ORIGINS = [process.env.NEXT_PUBLIC_APP_URL].filter(
+	Boolean,
+) as string[]
 
 function isOriginAllowed(origin: string | null): boolean {
 	if (!origin) return false

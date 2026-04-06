@@ -95,7 +95,9 @@ async function main() {
 	if (tests.length === 0) {
 		console.log("No tests matched the filter:", filter)
 		console.log("\nAvailable tests:")
-		getTests().forEach((t) => console.log(`  - ${t.name} (${t.type})`))
+		for (const t of getTests()) {
+			console.log(`  - ${t.name} (${t.type})`)
+		}
 		process.exit(1)
 	}
 

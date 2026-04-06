@@ -10,7 +10,7 @@
  */
 
 import { Hono } from "hono"
-import { eq, and, sql, desc, like } from "drizzle-orm"
+import { eq, and, sql, desc } from "drizzle-orm"
 import { db } from "../db/index.js"
 import { graphNodes, graphEdges } from "../db/schema.js"
 import { getSession } from "../middleware/auth.js"
@@ -144,7 +144,7 @@ graphRoutes.get("/search", async (c) => {
 		.where(
 			and(
 				eq(graphNodes.orgId, session.orgId),
-				sql`LOWER(${graphNodes.name}) LIKE LOWER(${'%' + q.trim() + '%'})`,
+				sql`LOWER(${graphNodes.name}) LIKE LOWER(${`%${q.trim()}%`})`,
 			),
 		)
 		.orderBy(desc(graphNodes.mentionCount))
@@ -200,8 +200,14 @@ graphRoutes.get("/visualize", async (c) => {
 		.where(
 			and(
 				eq(graphEdges.orgId, session.orgId),
-				sql`${graphEdges.sourceId} IN (${sql.join(nodeIds.map((id) => sql`${id}`), sql`, `)})`,
-				sql`${graphEdges.targetId} IN (${sql.join(nodeIds.map((id) => sql`${id}`), sql`, `)})`,
+				sql`${graphEdges.sourceId} IN (${sql.join(
+					nodeIds.map((id) => sql`${id}`),
+					sql`, `,
+				)})`,
+				sql`${graphEdges.targetId} IN (${sql.join(
+					nodeIds.map((id) => sql`${id}`),
+					sql`, `,
+				)})`,
 			),
 		)
 

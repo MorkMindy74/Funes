@@ -38,7 +38,11 @@ if (env.NODE_ENV === "development") {
 
 // ─── Health Check ───────────────────────────────────────────────────
 app.get("/health", (c) =>
-	c.json({ status: "ok", version: "0.1.0", timestamp: new Date().toISOString() }),
+	c.json({
+		status: "ok",
+		version: "0.1.0",
+		timestamp: new Date().toISOString(),
+	}),
 )
 
 // ─── Setup Routes (public, no auth) ─────────────────────────────────
@@ -49,7 +53,6 @@ app.on(["POST", "GET"], "/api/auth/**", (c) => auth.handler(c.req.raw))
 
 // ─── OAuth Callback (public — state token validates the request) ─────
 app.get("/v3/connections/callback", async (c) => {
-	const { connectionsRoutes: cr } = await import("./routes/connections.js")
 	// Forward to the callback handler in connections routes
 	const url = new URL(c.req.url)
 	const code = url.searchParams.get("code") || ""
@@ -63,7 +66,9 @@ app.get("/v3/connections/callback", async (c) => {
 	const { env: envConfig } = await import("./env.js")
 
 	if (error) {
-		return c.redirect(`${envConfig.FRONTEND_URL}/?error=${encodeURIComponent(errorDesc || error)}`)
+		return c.redirect(
+			`${envConfig.FRONTEND_URL}/?error=${encodeURIComponent(errorDesc || error)}`,
+		)
 	}
 
 	if (!code || !state) {
@@ -75,8 +80,12 @@ app.get("/v3/connections/callback", async (c) => {
 		return c.redirect(`${envConfig.FRONTEND_URL}/?error=invalid_state`)
 	}
 
-	const { provider, orgId, userId, redirectUrl, containerTags, codeVerifier } = stateData
-	const creds = await resolveCredentials(provider as any, orgId)
+	const { provider, orgId, userId, redirectUrl, containerTags, codeVerifier } =
+		stateData
+	const creds = await resolveCredentials(
+		provider as "google-drive" | "notion" | "onedrive",
+		orgId,
+	)
 	if (!creds) {
 		return c.redirect(`${envConfig.FRONTEND_URL}/?error=missing_credentials`)
 	}
@@ -102,7 +111,10 @@ app.get("/v3/connections/callback", async (c) => {
 			accessToken = tokens.accessToken
 			expiresAt = tokens.expiresAt
 			email = tokens.email || ""
-			metadata = { workspaceId: tokens.workspaceId, workspaceName: tokens.workspaceName }
+			metadata = {
+				workspaceId: tokens.workspaceId,
+				workspaceName: tokens.workspaceName,
+			}
 		} else if (provider === "onedrive") {
 			const od = await import("./services/oauth/onedrive.js")
 			const tokens = await od.exchangeCode(creds, code, codeVerifier || "")
@@ -134,7 +146,10 @@ app.get("/v3/connections/callback", async (c) => {
 			createdAt: new Date(),
 		})
 
-		logger.info({ provider, orgId, connectionId, email }, "OAuth connection established")
+		logger.info(
+			{ provider, orgId, connectionId, email },
+			"OAuth connection established",
+		)
 
 		const successUrl = new URL(redirectUrl || envConfig.FRONTEND_URL)
 		successUrl.searchParams.set("connection", "success")
@@ -143,7 +158,9 @@ app.get("/v3/connections/callback", async (c) => {
 	} catch (err) {
 		logger.error({ provider, err }, "OAuth token exchange failed")
 		const errMsg = err instanceof Error ? err.message : "token_exchange_failed"
-		return c.redirect(`${envConfig.FRONTEND_URL}/?error=${encodeURIComponent(errMsg)}`)
+		return c.redirect(
+			`${envConfig.FRONTEND_URL}/?error=${encodeURIComponent(errMsg)}`,
+		)
 	}
 })
 
@@ -222,10 +239,14 @@ isRedisAvailable().then(async (available) => {
 		const { embedWorker } = await import("./queue/workers/embed.worker.js")
 		const { indexWorker } = await import("./queue/workers/index.worker.js")
 
-		logger.info("Processing pipeline workers started (extract → chunk → embed → index)")
+		logger.info(
+			"Processing pipeline workers started (extract → chunk → embed → index)",
+		)
 
 		// Schedule daily memory maintenance (decay, forget expired)
-		const { runMemoryMaintenance } = await import("./processing/memory-manager.js")
+		const { runMemoryMaintenance } = await import(
+			"./processing/memory-manager.js"
+		)
 		const MAINTENANCE_INTERVAL = 24 * 60 * 60 * 1000 // 24 hours
 		const maintenanceTimer = setInterval(async () => {
 			try {
@@ -241,12 +262,15 @@ isRedisAvailable().then(async (available) => {
 			try {
 				await runMemoryMaintenance()
 				logger.info("Initial memory maintenance complete")
-			} catch { /* ignore on first run */ }
+			} catch {
+				/* ignore on first run */
+			}
 		}, 30000)
 
 		// Graceful shutdown
 		const shutdown = async () => {
 			logger.info("Shutting down workers...")
+			clearInterval(maintenanceTimer)
 			await Promise.all([
 				extractWorker.close(),
 				chunkWorker.close(),
@@ -257,7 +281,9 @@ isRedisAvailable().then(async (available) => {
 		process.on("SIGTERM", shutdown)
 		process.on("SIGINT", shutdown)
 	} else {
-		logger.warn("Redis not available — processing pipeline disabled. Documents will stay in 'queued' status.")
+		logger.warn(
+			"Redis not available — processing pipeline disabled. Documents will stay in 'queued' status.",
+		)
 	}
 })
 

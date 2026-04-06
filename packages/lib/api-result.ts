@@ -35,7 +35,10 @@ export type ApiResult<T> =
  * ```
  */
 export async function fetchResult<T>(
-	fetchFn: () => Promise<{ data: T; error: { message?: string; status?: number } | null }>,
+	fetchFn: () => Promise<{
+		data: T
+		error: { message?: string; status?: number } | null
+	}>,
 ): Promise<ApiResult<T>> {
 	try {
 		const response = await fetchFn()
@@ -57,7 +60,8 @@ export async function fetchResult<T>(
 			ok: false,
 			error: {
 				code: "NETWORK_ERROR",
-				message: error instanceof Error ? error.message : "Network request failed",
+				message:
+					error instanceof Error ? error.message : "Network request failed",
 			},
 		}
 	}
