@@ -51,14 +51,21 @@ export async function consolidateOrCreate(
 	orgId: string,
 	userId: string | null,
 	documentId: string,
+	scope?: { agentId?: string; sessionId?: string },
 ): Promise<string> {
 	// Generate embedding for the new memory
 	const embedding = await generateEmbedding(mem.memory)
 
-	// Search for similar existing memories
+	// Search for similar existing memories (scoped by space + agent/session)
+	const filterParts: string[] = []
+	if (spaceId) filterParts.push(`spaceId = "${spaceId}"`)
+	if (scope?.agentId) filterParts.push(`agentId = "${scope.agentId}"`)
+	if (scope?.sessionId) filterParts.push(`sessionId = "${scope.sessionId}"`)
+	const filter = filterParts.length > 0 ? filterParts.join(" AND ") : undefined
+
 	const similar = await searchMemories(embedding, {
 		limit: 3,
-		filter: spaceId ? `spaceId = "${spaceId}"` : undefined,
+		filter,
 	}).catch(() => [])
 
 	// Check for duplicates/near-duplicates
@@ -85,6 +92,8 @@ export async function consolidateOrCreate(
 		spaceId,
 		orgId,
 		userId,
+		agentId: scope?.agentId ?? null,
+		sessionId: scope?.sessionId ?? null,
 		confidence: mem.confidence,
 		memoryLevel: mem.level,
 		isStatic: mem.isStatic,
@@ -106,8 +115,15 @@ export async function consolidateOrCreate(
 		addedAt: new Date(),
 	})
 
-	// Index in LanceDB
-	await indexMemories([{ id: memId, memory: mem.memory, spaceId, embedding }])
+	// Index in vector store
+	await indexMemories([{
+		id: memId,
+		memory: mem.memory,
+		spaceId,
+		embedding,
+		agentId: scope?.agentId,
+		sessionId: scope?.sessionId,
+	}])
 
 	return memId
 }
@@ -426,6 +442,8 @@ export async function retrieveMemoriesForRAG(
 		minSimilarity?: number
 		spaceId?: string
 		queryText?: string
+		agentId?: string
+		sessionId?: string
 	} = {},
 ): Promise<
 	Array<{
@@ -440,10 +458,17 @@ export async function retrieveMemoriesForRAG(
 	const limit = options.limit ?? 10
 	const minSimilarity = options.minSimilarity ?? 0.25
 
-	// Get more results from LanceDB than needed, then re-rank
+	// Build scope filter for vector search
+	const scopeParts: string[] = []
+	if (options.spaceId) scopeParts.push(`spaceId = "${options.spaceId}"`)
+	if (options.agentId) scopeParts.push(`agentId = "${options.agentId}"`)
+	if (options.sessionId) scopeParts.push(`sessionId = "${options.sessionId}"`)
+	const scopeFilter = scopeParts.length > 0 ? scopeParts.join(" AND ") : undefined
+
+	// Get more results from vector store than needed, then re-rank
 	const vectorResults = await searchMemories(queryEmbedding, {
 		limit: limit * 3,
-		filter: options.spaceId ? `spaceId = "${options.spaceId}"` : undefined,
+		filter: scopeFilter,
 	})
 
 	if (vectorResults.length === 0) return []

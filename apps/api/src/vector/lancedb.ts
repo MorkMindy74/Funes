@@ -52,6 +52,8 @@ async function getMemoriesTable() {
 				id: "init",
 				memory: "",
 				spaceId: "",
+				agentId: "",
+				sessionId: "",
 				vector: new Array(dim).fill(0),
 			},
 		])
@@ -89,6 +91,8 @@ export async function indexMemories(
 		memory: string
 		spaceId: string
 		embedding: number[]
+		agentId?: string
+		sessionId?: string
 	}>,
 ): Promise<void> {
 	if (memories.length === 0) return
@@ -99,6 +103,8 @@ export async function indexMemories(
 			id: m.id,
 			memory: m.memory,
 			spaceId: m.spaceId,
+			agentId: m.agentId ?? "",
+			sessionId: m.sessionId ?? "",
 			vector: m.embedding,
 		})),
 	)
@@ -151,6 +157,8 @@ export async function searchMemories(
 			memory: r.memory,
 			spaceId: r.spaceId,
 			score: 1 - (r._distance ?? 0),
+			agentId: r.agentId || undefined,
+			sessionId: r.sessionId || undefined,
 		}))
 }
 

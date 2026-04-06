@@ -173,6 +173,10 @@ export const memoryEntries = pgTable(
 
 		metadata: jsonb("metadata").$type<Record<string, unknown>>(),
 
+		// Session scoping (optional — for multi-agent/multi-session isolation)
+		agentId: varchar("agent_id", { length: 36 }),
+		sessionId: varchar("session_id", { length: 36 }),
+
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 	},
@@ -181,6 +185,8 @@ export const memoryEntries = pgTable(
 		index("memory_entries_org_id_idx").on(table.orgId),
 		index("memory_entries_is_latest_idx").on(table.isLatest),
 		index("memory_entries_is_static_idx").on(table.isStatic),
+		index("memory_entries_agent_id_idx").on(table.agentId),
+		index("memory_entries_session_id_idx").on(table.sessionId),
 	],
 )
 

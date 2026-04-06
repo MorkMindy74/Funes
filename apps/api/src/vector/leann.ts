@@ -75,6 +75,8 @@ export class LeannBackend implements VectorBackend {
 					memory: m.memory,
 					space_id: m.spaceId,
 					embedding: m.embedding,
+					agent_id: m.agentId ?? undefined,
+					session_id: m.sessionId ?? undefined,
 				})),
 			}),
 			signal: AbortSignal.timeout(30000),

@@ -18,6 +18,8 @@ export interface MemoryRecord {
 	memory: string
 	spaceId: string
 	embedding: number[]
+	agentId?: string
+	sessionId?: string
 }
 
 export interface ChunkSearchResult {
@@ -32,6 +34,8 @@ export interface MemorySearchResult {
 	memory: string
 	spaceId: string
 	score: number
+	agentId?: string
+	sessionId?: string
 }
 
 export interface SearchOptions {

@@ -32,6 +32,8 @@ memoriesRoutes.get("/", async (c) => {
 	const session = getSession(c)
 	const level = c.req.query("level") // filter by memoryLevel
 	const forgotten = c.req.query("forgotten") === "true"
+	const agentId = c.req.query("agentId")
+	const sessionId = c.req.query("sessionId")
 	const limit = Math.min(Number(c.req.query("limit") || 50), 200)
 	const offset = Number(c.req.query("offset") || 0)
 
@@ -43,6 +45,14 @@ memoriesRoutes.get("/", async (c) => {
 
 	if (level && Object.values(MemoryLevel).includes(level as MemoryLevel)) {
 		conditions.push(eq(memoryEntries.memoryLevel, level))
+	}
+
+	if (agentId) {
+		conditions.push(eq(memoryEntries.agentId, agentId))
+	}
+
+	if (sessionId) {
+		conditions.push(eq(memoryEntries.sessionId, sessionId))
 	}
 
 	const memories = await db
