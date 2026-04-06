@@ -413,6 +413,28 @@ export const chatMessages = pgTable(
 	(table) => [index("chat_messages_thread_id_idx").on(table.threadId)],
 )
 
+// ─── Conversation Summaries ─────────────────────────────────────────
+export const conversationSummaries = pgTable(
+	"conversation_summaries",
+	{
+		id: varchar("id", { length: 36 }).primaryKey(),
+		threadId: varchar("thread_id", { length: 36 })
+			.notNull()
+			.references(() => chatThreads.id, { onDelete: "cascade" }),
+		summary: text("summary").notNull(),
+		messageRange: jsonb("message_range").$type<{
+			firstMessageId: string
+			lastMessageId: string
+			messageCount: number
+		}>(),
+		mode: varchar("mode", { length: 20 }).notNull(), // "sliding_window" | "full"
+		metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+
+		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+	},
+	(table) => [index("conversation_summaries_thread_id_idx").on(table.threadId)],
+)
+
 // ─── Relations ────��─────────────────────────────────────────────────
 export const documentsRelations = relations(documents, ({ many }) => ({
 	chunks: many(chunks),

@@ -15,6 +15,8 @@ import { db } from "../db/index.js"
 import { chatThreads, chatMessages } from "../db/schema.js"
 import { getSession } from "../middleware/auth.js"
 import { resolveModel, isLLMAvailable, getLLMInfo } from "../llm/provider.js"
+import { getConversationContext, summarizeConversation } from "../processing/conversation-summarizer.js"
+import { env } from "../env.js"
 import { generateEmbedding } from "../processing/embeddings.js"
 import { searchChunks } from "../vector/index.js"
 import { retrieveMemoriesForRAG } from "../processing/memory-manager.js"
@@ -150,6 +152,22 @@ chatRoutes.post("/", async (c) => {
 	// Build RAG context
 	const ragContext = await buildRAGContext(userQuery, session.orgId)
 
+	// Fetch prior conversation summary if summarization is enabled
+	let priorSummary = ""
+	if (chatId && env.SUMMARIZATION_MODE !== "none") {
+		try {
+			const ctx = await getConversationContext(chatId)
+			if (ctx.summary) {
+				priorSummary =
+					"\n\n<prior_conversation_summary>\n" +
+					ctx.summary +
+					"\n</prior_conversation_summary>"
+			}
+		} catch (err) {
+			logger.warn({ err, chatId }, "Failed to fetch conversation summary")
+		}
+	}
+
 	// Resolve LLM model
 	let resolved
 	try {
@@ -170,7 +188,7 @@ chatRoutes.post("/", async (c) => {
 	)
 
 	// Build message array for the AI SDK
-	const systemPrompt = SYSTEM_PROMPT + ragContext
+	const systemPrompt = SYSTEM_PROMPT + priorSummary + ragContext
 
 	const coreMessages: CoreMessage[] = messages.map((m) => ({
 		role: m.role as "user" | "assistant" | "system",
@@ -202,6 +220,12 @@ chatRoutes.post("/", async (c) => {
 						text,
 						projectId,
 					)
+					// Trigger summarization if enabled (fire-and-forget)
+					if (env.SUMMARIZATION_MODE !== "none") {
+						summarizeConversation(chatId).catch((err) =>
+							logger.warn({ err, chatId }, "Background summarization failed"),
+						)
+					}
 				}
 			} catch (error) {
 				logger.error({ error, chatId }, "Failed to persist chat message")

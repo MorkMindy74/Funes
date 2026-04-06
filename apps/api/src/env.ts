@@ -33,6 +33,10 @@ export const env = {
 	// Optional: Reranking (improves search quality, off by default)
 	RERANKER_PROVIDER: process.env.RERANKER_PROVIDER ?? "none", // "none" | "llm" | "cross-encoder"
 
+	// Optional: Conversation summarization (compresses long chat histories)
+	SUMMARIZATION_MODE: process.env.SUMMARIZATION_MODE ?? "none", // "none" | "sliding_window" | "full"
+	SUMMARIZATION_THRESHOLD: Number(process.env.SUMMARIZATION_THRESHOLD ?? 20),
+
 	// Optional: Vector backend (default: lancedb embedded)
 	VECTOR_BACKEND: process.env.VECTOR_BACKEND ?? "lancedb", // "lancedb" | "leann"
 	LEANN_URL: process.env.LEANN_URL ?? "",
