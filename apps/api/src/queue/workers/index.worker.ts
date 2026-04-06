@@ -11,7 +11,7 @@ import {
 import { indexChunks } from "../../vector/index.js"
 import { extractMemories } from "../../processing/memory-extractor.js"
 import { consolidateOrCreate } from "../../processing/memory-manager.js"
-import { extractGraph } from "../../processing/entity-extractor.js"
+import { extractGraphWithCustomPrompt } from "../../processing/entity-extractor.js"
 import { ingestGraph } from "../../processing/graph-manager.js"
 import { logger } from "../../logger.js"
 
@@ -97,7 +97,7 @@ export const indexWorker = new Worker<IndexJobData>(
 
 			// 5. Extract knowledge graph entities & relationships
 			try {
-				const graphData = await extractGraph(doc.content ?? "", {
+				const graphData = await extractGraphWithCustomPrompt(doc.content ?? "", doc.orgId, {
 					title: doc.title ?? undefined,
 				})
 

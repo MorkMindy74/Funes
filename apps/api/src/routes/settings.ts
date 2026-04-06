@@ -27,6 +27,8 @@ settingsRoutes.get("/", async (c) => {
 			filterPrompt: settings.filterPrompt,
 			includeItems: settings.includeItems,
 			excludeItems: settings.excludeItems,
+			customExtractionPrompt: settings.customExtractionPrompt,
+			customUpdatePrompt: settings.customUpdatePrompt,
 		},
 	})
 })
@@ -47,6 +49,8 @@ settingsRoutes.patch("/", async (c) => {
 		filterPrompt: body.filterPrompt,
 		includeItems: body.includeItems,
 		excludeItems: body.excludeItems,
+		customExtractionPrompt: body.customExtractionPrompt,
+		customUpdatePrompt: body.customUpdatePrompt,
 		googleDriveCustomKeyEnabled: body.googleDriveCustomKeyEnabled,
 		googleDriveClientId: body.googleDriveClientId,
 		googleDriveClientSecret: body.googleDriveClientSecret,
@@ -79,6 +83,8 @@ settingsRoutes.patch("/", async (c) => {
 			filterPrompt: body.filterPrompt,
 			includeItems: body.includeItems,
 			excludeItems: body.excludeItems,
+			customExtractionPrompt: body.customExtractionPrompt,
+			customUpdatePrompt: body.customUpdatePrompt,
 		},
 	})
 })

@@ -54,9 +54,18 @@ export async function extractGraph(
 
 async function extractWithOllama(
 	content: string,
-	options?: { title?: string },
+	options?: { title?: string; customPrompt?: string },
 ): Promise<GraphExtractionResult> {
-	const prompt = `Extract entities and relationships from the following text. Return a JSON object with:
+	let prompt: string
+
+	if (options?.customPrompt) {
+		// Apply template variables to custom prompt
+		prompt = options.customPrompt
+			.replace(/\{\{content\}\}/g, content.slice(0, 4000))
+			.replace(/\{\{title\}\}/g, options?.title ?? "Unknown")
+			.replace(/\{\{maxEntities\}\}/g, "20")
+	} else {
+		prompt = `Extract entities and relationships from the following text. Return a JSON object with:
 
 {
   "entities": [
@@ -80,6 +89,7 @@ Content (truncated):
 ${content.slice(0, 4000)}
 
 Return ONLY valid JSON, no markdown, no explanation.`
+	}
 
 	const response = await fetch(`${env.OLLAMA_URL}/api/generate`, {
 		method: "POST",
@@ -210,4 +220,55 @@ function normalizeRelation(relation: string): string {
 		.replace(/\s+/g, "_")
 		.replace(/[^a-z0-9_]/g, "")
 		|| "related_to"
+}
+
+// ─── Custom prompt extraction ────────────────────────────────────
+
+/**
+ * Extract graph entities using organization's custom prompt if configured.
+ * Falls back to the standard extractGraph when no custom prompt is set.
+ */
+export async function extractGraphWithCustomPrompt(
+	content: string,
+	orgId: string,
+	options?: { title?: string },
+): Promise<GraphExtractionResult> {
+	if (!content || content.trim().length < 30) {
+		return { entities: [], relationships: [] }
+	}
+
+	// Check for custom extraction prompt in org settings
+	try {
+		const { eq } = await import("drizzle-orm")
+		const { db } = await import("../db/index.js")
+		const { organizationSettings } = await import("../db/schema.js")
+
+		const [settings] = await db
+			.select({ customExtractionPrompt: organizationSettings.customExtractionPrompt })
+			.from(organizationSettings)
+			.where(eq(organizationSettings.orgId, orgId))
+			.limit(1)
+
+		if (settings?.customExtractionPrompt) {
+			const prompt = settings.customExtractionPrompt
+
+			// Validate: must contain {{content}} placeholder and be under 4000 chars
+			if (!prompt.includes("{{content}}")) {
+				logger.warn({ orgId }, "Custom extraction prompt missing {{content}} placeholder — using default")
+			} else if (prompt.length > 4000) {
+				logger.warn({ orgId }, "Custom extraction prompt exceeds 4000 chars — using default")
+			} else if (env.OLLAMA_URL) {
+				try {
+					return await extractWithOllama(content, { title: options?.title, customPrompt: prompt })
+				} catch (err) {
+					logger.warn({ err, orgId }, "Custom prompt extraction failed — falling back to default")
+				}
+			}
+		}
+	} catch (err) {
+		logger.debug({ err, orgId }, "Could not fetch custom extraction prompt — using default")
+	}
+
+	// Fallback to standard extraction
+	return extractGraph(content, options)
 }

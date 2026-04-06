@@ -277,6 +277,10 @@ export const organizationSettings = pgTable("organization_settings", {
 	onedriveClientId: text("onedrive_client_id"),
 	onedriveClientSecret: text("onedrive_client_secret"),
 
+	// Custom extraction prompts (override defaults for entity extraction & memory consolidation)
+	customExtractionPrompt: text("custom_extraction_prompt"),
+	customUpdatePrompt: text("custom_update_prompt"),
+
 	updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
 
