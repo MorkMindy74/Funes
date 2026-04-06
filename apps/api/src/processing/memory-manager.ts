@@ -425,6 +425,7 @@ export async function retrieveMemoriesForRAG(
 		limit?: number
 		minSimilarity?: number
 		spaceId?: string
+		queryText?: string
 	} = {},
 ): Promise<
 	Array<{
@@ -489,9 +490,34 @@ export async function retrieveMemoriesForRAG(
 		})
 		.filter((r): r is NonNullable<typeof r> => r !== null && r.score >= minSimilarity)
 		.sort((a, b) => b.score - a.score)
-		.slice(0, limit)
 
-	return ranked
+	// Apply reranking if configured and query text available
+	if (options.queryText && ranked.length > 0) {
+		const { getReranker } = await import("./reranker/index.js")
+		const reranker = getReranker()
+		if (reranker) {
+			try {
+				const reranked = await reranker.rerank(
+					options.queryText,
+					ranked.map((r) => ({ id: r.id, content: r.memory, score: r.score })),
+					limit,
+				)
+				// Map reranked scores back to full result objects
+				const rankedMap = new Map(ranked.map((r) => [r.id, r]))
+				return reranked
+					.map((rr) => {
+						const original = rankedMap.get(rr.id)
+						if (!original) return null
+						return { ...original, score: rr.rerankedScore }
+					})
+					.filter((r): r is NonNullable<typeof r> => r !== null)
+			} catch (err) {
+				logger.warn({ err }, "Reranking failed — using confidence-weighted scores")
+			}
+		}
+	}
+
+	return ranked.slice(0, limit)
 }
 
 /** Boost scores for higher-level memories */

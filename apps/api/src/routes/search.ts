@@ -5,6 +5,7 @@ import { documents, chunks, spaces, documentsToSpaces, memoryEntries } from "../
 import { getSession } from "../middleware/auth.js"
 import { generateEmbedding } from "../processing/embeddings.js"
 import { searchChunks, searchMemories } from "../vector/index.js"
+import { getReranker } from "../processing/reranker/index.js"
 import { logger } from "../logger.js"
 
 export const searchRoutes = new Hono()
@@ -35,10 +36,31 @@ searchRoutes.post("/", async (c) => {
 		const queryEmbedding = await generateEmbedding(q)
 
 		// 2. Search chunks in LanceDB
-		const chunkResults = await searchChunks(queryEmbedding, { limit: limit * 3 })
+		let chunkResults = await searchChunks(queryEmbedding, { limit: limit * 3 })
 
 		if (chunkResults.length === 0) {
 			return c.json({ results: [], timing: Date.now() - startTime, total: 0 })
+		}
+
+		// 2b. Apply reranking if configured
+		const reranker = getReranker()
+		if (reranker) {
+			try {
+				const reranked = await reranker.rerank(
+					q,
+					chunkResults.map((c) => ({ id: c.documentId + ":" + chunkResults.indexOf(c), content: c.content, score: c.score })),
+					chunkResults.length,
+				)
+				const rerankedMap = new Map(reranked.map((r) => [r.id, r.rerankedScore]))
+				chunkResults = chunkResults
+					.map((c, i) => ({
+						...c,
+						score: rerankedMap.get(c.documentId + ":" + i) ?? c.score,
+					}))
+					.sort((a, b) => b.score - a.score)
+			} catch (err) {
+				logger.warn({ err }, "Search reranking failed — using vector scores")
+			}
 		}
 
 		// 3. Get document IDs from chunk results

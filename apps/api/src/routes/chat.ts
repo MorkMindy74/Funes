@@ -36,7 +36,7 @@ async function buildRAGContext(
 		// Search chunks, memories, and graph in parallel
 		const [chunkResults, memoryResults, graphContext] = await Promise.all([
 			searchChunks(embedding, { limit: 5 }).catch(() => []),
-			retrieveMemoriesForRAG(embedding, { limit: 8, minSimilarity: 0.25 }).catch(() => []),
+			retrieveMemoriesForRAG(embedding, { limit: 8, minSimilarity: 0.25, queryText: query }).catch(() => []),
 			getGraphContextForRAG(query, orgId, { maxDepth: 2, maxNodes: 10 }).catch(() => ""),
 		])
 
